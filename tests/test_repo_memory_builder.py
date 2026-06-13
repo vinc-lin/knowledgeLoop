@@ -46,3 +46,29 @@ def test_walks_children():
     em = build_entity_map(tree, [])
     names = {m.module for m in em.modules}
     assert names == {"parent", "child"}
+
+
+def test_qualified_suffix_when_roots_differ():
+    # CBM stored an absolute path; Wiki path is repo-relative -> suffix match
+    nodes = [NodeRecord("n2", "Chunker", "ingest.Chunker",
+                        "/abs/repo/src/ingest/chunker.py", 1, 9)]
+    tree = {"m": {"path": "src/ingest",
+                  "components": ["src/ingest/chunker.py::Chunker"], "children": {}}}
+    em = build_entity_map(tree, nodes)
+    e = em.modules[0].entries[0]
+    assert e.match_strategy == "qualified_suffix"
+    assert e.confidence == 0.85
+    assert e.cbm_node_id == "n2"
+
+
+def test_file_only_when_symbol_missing_but_file_present():
+    nodes = [NodeRecord("n3", "SomethingElse", "x.SomethingElse",
+                        "src/ingest/pipeline.py", 1, 5)]
+    tree = {"m": {"path": "src/ingest",
+                  "components": ["src/ingest/pipeline.py::IngestionPipeline"],
+                  "children": {}}}
+    em = build_entity_map(tree, nodes)
+    e = em.modules[0].entries[0]
+    assert e.match_strategy == "file_only"
+    assert e.confidence == 0.5
+    assert e.cbm_node_id is None
