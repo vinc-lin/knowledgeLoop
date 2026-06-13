@@ -489,9 +489,12 @@ class DocumentationGenerator:
             if os.path.exists(repo_overview_path):
                 os.rename(repo_overview_path, os.path.join(working_dir, OVERVIEW_FILENAME))
         
+        # Canonicalize doc filenames to the nav's ${node-key}.md contract.
+        canonicalize_doc_filenames(working_dir, file_manager.load_json(module_tree_path))
+
         return working_dir
 
-    async def generate_parent_module_docs(self, module_path: List[str], 
+    async def generate_parent_module_docs(self, module_path: List[str],
                                         working_dir: str) -> Dict[str, Any]:
         """Generate documentation for a parent module based on its children's documentation."""
         module_name = module_path[-1] if len(module_path) >= 1 else os.path.basename(os.path.normpath(self.config.repo_path))
