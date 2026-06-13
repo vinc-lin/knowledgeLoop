@@ -64,6 +64,12 @@ def canonicalize_doc_filenames(working_dir: str, module_tree: dict) -> list:
     H1-title match regardless of tree order. Renames files only (the nav derives
     filenames from node keys, so the tree is untouched). Idempotent. Returns the
     list of ``(old_name, new_name)`` renames performed.
+
+    Note: two distinct keys that canonicalize to the same filename (e.g. ``A/B``
+    and ``A_B`` both → ``A_B.md``) cannot both resolve — the second is skipped
+    without clobbering the first (its nav link stays broken). The H1 fallback is
+    a substring heuristic; very short keys could mis-bind, but the collision
+    guard prevents data loss and ambiguity is logged.
     """
     keys = []
 
@@ -90,7 +96,10 @@ def canonicalize_doc_filenames(working_dir: str, module_tree: dict) -> list:
     for key in keys:
         if key in resolved:
             continue
-        for f in by_norm.get(_norm_name(key), []):
+        nk = _norm_name(key)
+        if not nk:  # a key with no alphanumerics can't be matched safely
+            continue
+        for f in by_norm.get(nk, []):
             if f not in claimed:
                 resolved[key] = f
                 claimed.add(f)

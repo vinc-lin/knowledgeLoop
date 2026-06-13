@@ -3,7 +3,10 @@
 import json
 import os
 import re
+import shutil
 import subprocess
+
+import pytest
 
 from codewiki.src.be.documentation_generator import (
     canonical_doc_name,
@@ -99,6 +102,7 @@ def test_template_defines_slug_and_encodes():
     assert "encodeURIComponent(" in tmpl, "loadDocument should URL-encode the filename"
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 def test_python_js_slug_parity():
     """Extract the template's slug() and run it via node; it must equal canonical_doc_name."""
     tmpl = open(TEMPLATE, encoding="utf-8").read()
