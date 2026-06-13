@@ -569,7 +569,8 @@ class DocumentationGenerator:
                 os.rename(repo_overview_path, os.path.join(working_dir, OVERVIEW_FILENAME))
         
         # Canonicalize doc filenames to the nav's ${node-key}.md contract.
-        canonicalize_doc_filenames(working_dir, file_manager.load_json(module_tree_path))
+        renames = canonicalize_doc_filenames(working_dir, file_manager.load_json(module_tree_path))
+        canonicalize_doc_links(working_dir, renames)
 
         return working_dir
 
