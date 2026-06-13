@@ -40,6 +40,101 @@ def canonical_doc_name(node_key: str) -> str:
     return re.sub(r"[\\/]", "_", node_key) + ".md"
 
 
+def _norm_name(s: str) -> str:
+    """Casefold + drop non-alphanumerics, for matching keys to filenames."""
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _first_h1(path: str) -> str:
+    """Return the text of the first markdown ``# `` heading, or ''."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as fh:
+            for line in fh:
+                if line.startswith("# "):
+                    return line[2:].strip()
+    except OSError:
+        pass
+    return ""
+
+
+def canonicalize_doc_filenames(working_dir: str, module_tree: dict) -> list:
+    """Rename each module-tree node's doc to ``canonical_doc_name(key)``.
+
+    Resolution is two-phase so a normalized-name match always beats a weaker
+    H1-title match regardless of tree order. Renames files only (the nav derives
+    filenames from node keys, so the tree is untouched). Idempotent. Returns the
+    list of ``(old_name, new_name)`` renames performed.
+    """
+    keys = []
+
+    def _walk(t):
+        for name, info in t.items():
+            if not isinstance(info, dict):
+                continue
+            if info.get("components"):  # only nodes with components have generated docs
+                keys.append(name)
+            _walk(info.get("children") or {})
+
+    _walk(module_tree)
+
+    md_files = [f for f in os.listdir(working_dir)
+                if f.endswith(".md") and f != OVERVIEW_FILENAME]
+    by_norm = {}
+    for f in md_files:
+        by_norm.setdefault(_norm_name(f[:-3]), []).append(f)
+
+    claimed = set()
+    resolved = {}
+
+    # Phase 1: normalized-name match.
+    for key in keys:
+        if key in resolved:
+            continue
+        for f in by_norm.get(_norm_name(key), []):
+            if f not in claimed:
+                resolved[key] = f
+                claimed.add(f)
+                break
+
+    # Phase 2: H1-title fallback for still-unresolved nodes.
+    for key in keys:
+        if key in resolved:
+            continue
+        nk = _norm_name(key)
+        if not nk:
+            continue
+        matches = [f for f in md_files
+                   if f not in claimed and nk in _norm_name(_first_h1(os.path.join(working_dir, f)))]
+        if len(matches) == 1:
+            resolved[key] = matches[0]
+            claimed.add(matches[0])
+        elif matches:
+            logger.warning("canonicalize: ambiguous node %r (candidates=%s)", key, matches)
+        else:
+            logger.debug("canonicalize: no doc found for node %r", key)
+
+    renames = []
+    for key, f in resolved.items():
+        target = canonical_doc_name(key)
+        if f == target:
+            continue
+        src = os.path.join(working_dir, f)
+        dst = os.path.join(working_dir, target)
+        if os.path.exists(dst):
+            if not os.path.samefile(src, dst):
+                logger.warning("canonicalize: target %r exists (different file); skipping %r", target, f)
+                continue
+            # case/separator-only difference on a case-insensitive FS: two-step rename.
+            tmp = src + ".tmprename"
+            os.rename(src, tmp)
+            os.rename(tmp, dst)
+        else:
+            os.rename(src, dst)
+        renames.append((f, target))
+        logger.info("canonicalize: %s -> %s", f, target)
+    return renames
+
+
 class DocumentationGenerator:
     """Main documentation generation orchestrator."""
 
