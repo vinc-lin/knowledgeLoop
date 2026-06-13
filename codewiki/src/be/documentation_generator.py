@@ -6,6 +6,7 @@ import re
 from typing import Dict, List, Any
 from copy import deepcopy
 import traceback
+from urllib.parse import unquote
 
 # Configure logging and monitoring
 logger = logging.getLogger(__name__)
@@ -142,6 +143,75 @@ def canonicalize_doc_filenames(working_dir: str, module_tree: dict) -> list:
         renames.append((f, target))
         logger.info("canonicalize: %s -> %s", f, target)
     return renames
+
+
+# Matches a markdown link destination ending in .md, with or without <> wrapping,
+# tolerating spaces and a literal '#' inside the name plus an optional #anchor.
+_LINK_RE = re.compile(r"\]\(\s*<?([^)<>]*?\.md)(#[^)>]*)?>?\s*\)")
+
+
+def canonicalize_doc_links(working_dir: str, renames: list, extra_aliases: dict = None) -> dict:
+    """Rewrite intra-wiki body-link targets to the canonical doc, in angle-bracket
+    markdown form so marked.js parses spaces/'#'.
+
+    A link's intended doc is resolved via (1) the ``renames`` map (old agent
+    filename -> canonical), (2) a normalized-name match against existing docs, or
+    (3) an optional ``extra_aliases`` ({normalized_token: canonical_filename}).
+    Unresolvable targets (no such doc) are left unchanged. Idempotent. Returns
+    ``{"rewritten": n, "unresolved": m}``.
+    """
+    extra_aliases = extra_aliases or {}
+    docs = {f for f in os.listdir(working_dir) if f.endswith(".md")}
+    by_norm = {}
+    for f in docs:
+        by_norm.setdefault(_norm_name(f[:-3]), []).append(f)
+    rename_map = {old: new for old, new in (renames or [])}
+
+    def _canonical_for(base):
+        if base in docs:
+            return base
+        if base in rename_map and rename_map[base] in docs:
+            return rename_map[base]
+        cand = by_norm.get(_norm_name(base[:-3]))
+        if cand and len(cand) == 1:
+            return cand[0]
+        if cand:  # 2+ docs share this normalized name — ambiguous, don't guess
+            logger.debug("canonicalize_doc_links: ambiguous target %r -> %s", base, cand)
+        alias = extra_aliases.get(_norm_name(base[:-3]))
+        return alias if alias in docs else None
+
+    rewritten = 0
+    unresolved = set()
+
+    for src in sorted(docs):
+        path = os.path.join(working_dir, src)
+        with open(path, encoding="utf-8", errors="ignore") as fh:
+            text = fh.read()
+
+        def repl(m):
+            nonlocal rewritten
+            dest, anchor = m.group(1), m.group(2) or ""
+            if "://" in dest:
+                return m.group(0)
+            base = os.path.basename(unquote(dest))
+            canon = _canonical_for(base)
+            if not canon:
+                unresolved.add(base)
+                return m.group(0)
+            desired = f"](<{canon}{anchor}>)"
+            if m.group(0) != desired:
+                rewritten += 1
+            return desired
+
+        new = _LINK_RE.sub(repl, text)
+        if new != text:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(new)
+
+    if rewritten or unresolved:
+        logger.info("canonicalize_doc_links: %d rewritten; %d unresolved targets: %s",
+                    rewritten, len(unresolved), sorted(unresolved))
+    return {"rewritten": rewritten, "unresolved": len(unresolved)}
 
 
 class DocumentationGenerator:
