@@ -23,6 +23,18 @@ from codewiki.src.be.documentation_generator import DocumentationGenerator
 from codewiki.src.config import Config as BackendConfig, set_cli_context
 
 
+def _resolve_commit_id(repo_path) -> "str | None":
+    """Best-effort current commit sha of the repo being documented.
+
+    Returns None when repo_path is not a git repository.
+    """
+    try:
+        from codewiki.cli.git_manager import GitManager
+        return GitManager(Path(repo_path)).get_commit_hash()
+    except Exception:
+        return None
+
+
 class CLIDocumentationGenerator:
     """
     CLI adapter for documentation generation with progress reporting.
@@ -189,7 +201,8 @@ class CLIDocumentationGenerator:
             self.progress_tracker.update_stage(0.2, "Initializing dependency analyzer...")
         
         # Create documentation generator
-        doc_generator = DocumentationGenerator(backend_config)
+        commit_id = _resolve_commit_id(self.repo_path)
+        doc_generator = DocumentationGenerator(backend_config, commit_id=commit_id)
         
         if self.verbose:
             self.progress_tracker.update_stage(0.5, "Parsing source files...")
