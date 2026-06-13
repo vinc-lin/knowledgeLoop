@@ -30,3 +30,46 @@ def test_tools_for_leaf_excludes_submodule_tool():
 def test_tools_for_complex_includes_submodule_tool():
     tools = PydanticAIBackend._tools_for(True)
     assert generate_sub_module_documentation_tool in tools
+
+
+from pydantic_ai.exceptions import IncompleteToolCall
+
+
+def _overflow():
+    return IncompleteToolCall("output limit exceeded")
+
+
+def test_should_escalate_true_on_leaf_overflow_no_doc_flag_on():
+    assert PydanticAIBackend._should_escalate(
+        _overflow(), doc_exists=False, decompose_on_overflow=True,
+        already_complex=False, escalated=False) is True
+
+
+def test_should_escalate_false_when_flag_off():
+    assert PydanticAIBackend._should_escalate(
+        _overflow(), doc_exists=False, decompose_on_overflow=False,
+        already_complex=False, escalated=False) is False
+
+
+def test_should_escalate_false_when_already_complex():
+    assert PydanticAIBackend._should_escalate(
+        _overflow(), doc_exists=False, decompose_on_overflow=True,
+        already_complex=True, escalated=False) is False
+
+
+def test_should_escalate_false_when_already_escalated():
+    assert PydanticAIBackend._should_escalate(
+        _overflow(), doc_exists=False, decompose_on_overflow=True,
+        already_complex=False, escalated=True) is False
+
+
+def test_should_escalate_false_when_doc_written():
+    assert PydanticAIBackend._should_escalate(
+        _overflow(), doc_exists=True, decompose_on_overflow=True,
+        already_complex=False, escalated=False) is False
+
+
+def test_should_escalate_false_on_other_exception():
+    assert PydanticAIBackend._should_escalate(
+        ValueError("nope"), doc_exists=False, decompose_on_overflow=True,
+        already_complex=False, escalated=False) is False

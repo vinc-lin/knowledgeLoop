@@ -14,6 +14,7 @@ import traceback
 from typing import Any, Dict, List
 
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import IncompleteToolCall
 
 from codewiki.src.be.agent_tools.deps import CodeWikiDeps
 from codewiki.src.be.agent_tools.generate_sub_module_documentations import (
@@ -52,6 +53,19 @@ class PydanticAIBackend(LLMBackend):
         temperature: float = 0.0,
     ) -> str:
         return call_llm(prompt, self._config, model=model, temperature=temperature)
+
+    @staticmethod
+    def _should_escalate(exc: BaseException, *, doc_exists: bool,
+                         decompose_on_overflow: bool, already_complex: bool,
+                         escalated: bool) -> bool:
+        """A leaf agent overflowed the output cap mid-write and we may retry as decompose."""
+        return (
+            isinstance(exc, IncompleteToolCall)
+            and not doc_exists
+            and decompose_on_overflow
+            and not already_complex
+            and not escalated
+        )
 
     @staticmethod
     def _tools_for(complex_: bool) -> list:
