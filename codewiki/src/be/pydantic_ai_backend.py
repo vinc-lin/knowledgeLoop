@@ -53,6 +53,29 @@ class PydanticAIBackend(LLMBackend):
     ) -> str:
         return call_llm(prompt, self._config, model=model, temperature=temperature)
 
+    @staticmethod
+    def _tools_for(complex_: bool) -> list:
+        """Toolset for a module agent. Complex modules also get the decomposition tool."""
+        base = [read_code_components_tool, str_replace_editor_tool]
+        if complex_:
+            return base + [generate_sub_module_documentation_tool]
+        return base
+
+    def _build_agent(self, module_name: str, *, complex_: bool) -> Agent:
+        """Build the leaf or complex documentation agent for a module."""
+        system_prompt = (
+            format_system_prompt(module_name, self._custom_instructions)
+            if complex_
+            else format_leaf_system_prompt(module_name, self._custom_instructions)
+        )
+        return Agent(
+            self._fallback_models,
+            name=module_name,
+            deps_type=CodeWikiDeps,
+            tools=self._tools_for(complex_),
+            system_prompt=system_prompt,
+        )
+
     async def run_module_agent(
         self,
         module_name: str,
@@ -75,26 +98,8 @@ class PydanticAIBackend(LLMBackend):
             logger.info("✓ Module docs already exists at %s", docs_path)
             return module_tree
 
-        if is_complex_module(components, core_component_ids):
-            agent = Agent(
-                self._fallback_models,
-                name=module_name,
-                deps_type=CodeWikiDeps,
-                tools=[
-                    read_code_components_tool,
-                    str_replace_editor_tool,
-                    generate_sub_module_documentation_tool,
-                ],
-                system_prompt=format_system_prompt(module_name, self._custom_instructions),
-            )
-        else:
-            agent = Agent(
-                self._fallback_models,
-                name=module_name,
-                deps_type=CodeWikiDeps,
-                tools=[read_code_components_tool, str_replace_editor_tool],
-                system_prompt=format_leaf_system_prompt(module_name, self._custom_instructions),
-            )
+        complex_ = is_complex_module(components, core_component_ids)
+        agent = self._build_agent(module_name, complex_=complex_)
 
         deps = CodeWikiDeps(
             absolute_docs_path=working_dir,
