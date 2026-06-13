@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import json
+import re
 from typing import Dict, List, Any
 from copy import deepcopy
 import traceback
@@ -27,6 +28,16 @@ from codewiki.src.config import (
     OVERVIEW_FILENAME
 )
 from codewiki.src.utils import file_manager
+
+
+def canonical_doc_name(node_key: str) -> str:
+    """The on-disk doc filename for a module-tree node.
+
+    Sanitize only the filesystem path separators (``/`` and ``\\``); keep the
+    rest of the key raw (spaces, ``#``). This is the contract the wiki nav uses
+    (its JS ``slug()`` applies the identical rule).
+    """
+    return re.sub(r"[\\/]", "_", node_key) + ".md"
 
 
 class DocumentationGenerator:
