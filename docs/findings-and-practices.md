@@ -72,6 +72,12 @@ models (Claude-class)**. Pairing it with a small-output model exposes the seams.
   and let parent-recovery + the missing-doc sweep fill gaps.
 - **For best quality, use a large-output model** (e.g. Claude Sonnet, 64K). Within a
   small-output gateway, DeepSeek + the profile is the practical best, capped ~95%.
+- **Small-output models now self-heal oversized modules.**
+  `ModelProfile.decompose_on_overflow` (default on) makes a module whose single-doc
+  write exceeds the output cap retry in *decompose* mode instead of becoming a gap.
+  It is a per-model profile setting (override via the profile registry or a
+  `resolve_profile` override). The subscription (claude-code/codex) path is inert
+  here, as it is for the output cap.
 
 ## Model-agnostic framework (how the learnings are encoded)
 
