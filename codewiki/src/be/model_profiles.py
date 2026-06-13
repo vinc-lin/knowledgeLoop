@@ -62,6 +62,7 @@ class ModelProfile:
     max_depth: int
     temperature: Optional[float]         # None = OMIT the temperature param entirely
     honored: frozenset                   # API_HONORED or CAW_HONORED
+    decompose_on_overflow: bool = True   # leaf write overflow -> retry as decompose
 
 
 def _derive_granularity(p: ModelProfile) -> ModelProfile:
