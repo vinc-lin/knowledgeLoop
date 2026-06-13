@@ -113,51 +113,63 @@ class PydanticAIBackend(LLMBackend):
             return module_tree
 
         complex_ = is_complex_module(components, core_component_ids)
-        agent = self._build_agent(module_name, complex_=complex_)
-
-        deps = CodeWikiDeps(
-            absolute_docs_path=working_dir,
-            absolute_repo_path=str(os.path.abspath(config.repo_path)),
-            registry={},
-            components=components,
-            path_to_current_module=module_path,
-            current_module_name=module_name,
-            module_tree=module_tree,
-            max_depth=config.max_depth,
-            current_depth=1,
-            config=config,
-            custom_instructions=self._custom_instructions,
-        )
-
-        try:
-            await agent.run(
-                format_user_prompt(
-                    module_name=module_name,
-                    core_component_ids=core_component_ids,
-                    components=components,
-                    module_tree=deps.module_tree,
-                ),
-                deps=deps,
-                usage_limits=build_usage_limits(config),
+        # `escalated` blocks a second leaf->complex retry; it is needed in addition to
+        # `complex_` because a natively-complex module enters with complex_=True and must
+        # not also be treated as an escalation candidate.
+        escalated = False
+        while True:
+            agent = self._build_agent(module_name, complex_=complex_)
+            deps = CodeWikiDeps(
+                absolute_docs_path=working_dir,
+                absolute_repo_path=str(os.path.abspath(config.repo_path)),
+                registry={},
+                components=components,
+                path_to_current_module=module_path,
+                current_module_name=module_name,
+                module_tree=module_tree,
+                max_depth=config.max_depth,
+                current_depth=1,
+                config=config,
+                custom_instructions=self._custom_instructions,
             )
-            logger.info("module %s diagnostics: %s", module_name, deps.diagnostics.summary())
-            file_manager.save_json(deps.module_tree, module_tree_path)
-            return deps.module_tree
-        except Exception as e:
-            logger.info("module %s diagnostics (on raise): %s", module_name, deps.diagnostics.summary())
-            # Small-output models (e.g. DeepSeek, 8K output cap) can raise *after*
-            # the module's documentation is already written to disk, when the agent
-            # attempts one extra oversized tool call that exceeds the output limit.
-            # If the doc file exists, the deliverable is done — treat the module as
-            # complete and persist its module-tree entry instead of failing it.
-            docs_path = os.path.join(working_dir, f"{module_name}.md")
-            if os.path.exists(docs_path):
-                logger.warning(
-                    "Module %s agent raised after writing docs (%s); treating as complete",
-                    module_name, e,
+            try:
+                await agent.run(
+                    format_user_prompt(
+                        module_name=module_name,
+                        core_component_ids=core_component_ids,
+                        components=components,
+                        module_tree=deps.module_tree,
+                    ),
+                    deps=deps,
+                    usage_limits=build_usage_limits(config),
                 )
+                logger.info("module %s diagnostics: %s", module_name, deps.diagnostics.summary())
                 file_manager.save_json(deps.module_tree, module_tree_path)
                 return deps.module_tree
-            logger.error("Error processing module %s: %s", module_name, e)
-            logger.error("Traceback: %s", traceback.format_exc())
-            raise
+            except Exception as e:
+                logger.info("module %s diagnostics (on raise): %s",
+                            module_name, deps.diagnostics.summary())
+                docs_path = os.path.join(working_dir, f"{module_name}.md")
+                if os.path.exists(docs_path):
+                    logger.warning(
+                        "Module %s agent raised after writing docs (%s); treating as complete",
+                        module_name, e,
+                    )
+                    file_manager.save_json(deps.module_tree, module_tree_path)
+                    return deps.module_tree
+                if self._should_escalate(
+                    e, doc_exists=False,
+                    decompose_on_overflow=config.profile.decompose_on_overflow,
+                    already_complex=complex_, escalated=escalated,
+                ):
+                    logger.warning(
+                        "Module %s overflowed the output cap as a single doc; "
+                        "escalating to decompose mode", module_name,
+                    )
+                    complex_ = True
+                    escalated = True
+                    module_tree = file_manager.load_json(module_tree_path)  # clean retry state
+                    continue
+                logger.error("Error processing module %s: %s", module_name, e)
+                logger.error("Traceback: %s", traceback.format_exc())
+                raise
