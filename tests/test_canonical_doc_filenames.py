@@ -1,6 +1,21 @@
-"""Canonical doc filenames + the canonicalization pass."""
+"""Tests for canonical doc filenames + the canonicalization pass."""
 
-from codewiki.src.be.documentation_generator import canonical_doc_name
+import json
+import os
+import re
+import subprocess
+
+from codewiki.src.be.documentation_generator import (
+    canonical_doc_name,
+    canonicalize_doc_filenames,
+)
+
+# Anchor to the repo root (this file lives in <repo>/tests/) so the test works
+# regardless of the pytest invocation CWD.
+TEMPLATE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "codewiki", "templates", "github_pages", "viewer_template.html",
+)
 
 
 def test_canonical_plain_name():
@@ -17,11 +32,6 @@ def test_canonical_sanitizes_forward_slash():
 
 def test_canonical_sanitizes_backslash():
     assert canonical_doc_name("A\\B") == "A_B.md"
-
-
-import os
-
-from codewiki.src.be.documentation_generator import canonicalize_doc_filenames
 
 
 def _write(d, name, body="# Doc\n"):
@@ -80,3 +90,25 @@ def test_pass_recurses_into_children(tmp_path):
         "Child Mod": {"components": ["c::C"], "children": {}}}}}
     renames = canonicalize_doc_filenames(str(tmp_path), tree)
     assert ("child_doc.md", "Child Mod.md") in renames
+
+
+def test_template_defines_slug_and_encodes():
+    tmpl = open(TEMPLATE, encoding="utf-8").read()
+    assert "function slug(" in tmpl, "slug() helper missing from template"
+    assert "slug(key)" in tmpl, "buildNavItem should use slug(key)"
+    assert "encodeURIComponent(" in tmpl, "loadDocument should URL-encode the filename"
+
+
+def test_python_js_slug_parity():
+    """Extract the template's slug() and run it via node; it must equal canonical_doc_name."""
+    tmpl = open(TEMPLATE, encoding="utf-8").read()
+    m = re.search(r"function slug\((\w+)\)\s*\{(.*?)\}", tmpl, re.DOTALL)
+    assert m, "could not locate function slug(...) in template"
+    arg, body = m.group(1), m.group(2).strip()
+    keys = ["Plain", "C# Resolver", "TypeScript/JavaScript Resolver", "A\\B", "Rust Resolver"]
+    js = (f"const slug=({arg})=>{{{body}}};"
+          "const keys=JSON.parse(process.argv[1]);"
+          "console.log(JSON.stringify(keys.map(slug)));")
+    out = subprocess.run(["node", "-e", js, json.dumps(keys)],
+                         capture_output=True, text=True, check=True)
+    assert json.loads(out.stdout) == [canonical_doc_name(k) for k in keys]

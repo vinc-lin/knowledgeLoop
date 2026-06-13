@@ -465,7 +465,7 @@
         
         function buildNavItem(key, data, depth) {
             const indentClass = depth > 0 ? 'nav-subsection' : 'nav-section';
-            const fileName = `${key}.md`;
+            const fileName = slug(key);
             
             let html = `<div class="${indentClass}">`;
             
@@ -491,6 +491,8 @@
             return html;
         }
         
+        function slug(key) { return key.replace(/[\/\\]/g, '_') + '.md'; }
+
         function formatNavTitle(key) {
             return key
                 .replace(/_/g, ' ')
@@ -507,7 +509,7 @@
             content.style.display = 'none';
             
             try {
-                const docPath = DOCS_BASE_PATH ? `${DOCS_BASE_PATH}/${filename}` : filename;
+                const docPath = DOCS_BASE_PATH ? `${DOCS_BASE_PATH}/${encodeURIComponent(filename)}` : encodeURIComponent(filename);
                 const response = await fetch(docPath);
                 if (!response.ok) {
                     throw new Error(`Failed to load ${filename}`);
