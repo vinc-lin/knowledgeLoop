@@ -509,7 +509,10 @@
             content.style.display = 'none';
             
             try {
-                const docPath = DOCS_BASE_PATH ? `${DOCS_BASE_PATH}/${encodeURIComponent(filename)}` : encodeURIComponent(filename);
+                let safe = filename;
+                try { safe = decodeURIComponent(filename); } catch (e) { /* keep raw */ }
+                const enc = encodeURIComponent(safe);
+                const docPath = DOCS_BASE_PATH ? `${DOCS_BASE_PATH}/${enc}` : enc;
                 const response = await fetch(docPath);
                 if (!response.ok) {
                     throw new Error(`Failed to load ${filename}`);

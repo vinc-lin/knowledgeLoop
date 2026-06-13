@@ -1,8 +1,17 @@
 """Body-link canonicalization pass + loadDocument template fix."""
 
 import os
+import shutil
+import subprocess
+
+import pytest
 
 from codewiki.src.be.documentation_generator import canonicalize_doc_links
+
+TEMPLATE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "codewiki", "templates", "github_pages", "viewer_template.html",
+)
 
 
 def _w(d, name, body):
@@ -71,3 +80,17 @@ def test_idempotent(tmp_path):
     once = _read(tmp_path, "a.md")
     canonicalize_doc_links(str(tmp_path), [])  # second pass, empty rename map
     assert _read(tmp_path, "a.md") == once
+
+
+def test_loaddocument_decodes_before_encoding():
+    tmpl = open(TEMPLATE, encoding="utf-8").read()
+    assert "decodeURIComponent" in tmpl, "loadDocument must decode before re-encoding"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_decode_then_encode_resolves_special_chars():
+    # marked.js renders [x](<C# Resolver.md>) as href="C#%20Resolver.md";
+    # decode-then-encode must yield a single-encoded, fetchable URL.
+    js = "console.log(encodeURIComponent(decodeURIComponent('C#%20Resolver.md')));"
+    out = subprocess.run(["node", "-e", js], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "C%23%20Resolver.md"
