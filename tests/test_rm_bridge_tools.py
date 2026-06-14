@@ -19,12 +19,13 @@ class FakeProbe:
 
 
 def _state(entity_map):
-    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r", entity_map=entity_map)
+    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r",
+                    cbm=object(), entity_map=entity_map)
 
 
 def _em():
     entry = EntityEntry("Cfg", "p/m.py", "p.m.Cfg", [1, 5], "exact", 1.0)
-    return EntityMap("r", "w", "g", [ModuleMap("mod", None, "p", [entry], [])])
+    return EntityMap("r", "r", "r", [ModuleMap("mod", None, "p", [entry], [])])
 
 
 @pytest.mark.asyncio
@@ -35,6 +36,7 @@ async def test_returns_entries_and_confidence_when_fresh():
     assert e["result"]["files"] == ["p/m.py"]
     assert e["confidence"] == 1.0
     assert e["result"]["entries"][0]["stale"] is False
+    assert e["freshness"] == "fresh"
 
 
 @pytest.mark.asyncio
@@ -42,6 +44,7 @@ async def test_marks_stale_when_node_gone():
     probe = FakeProbe({})  # node missing now
     e = await bridge_tools.get_related_files(_state(_em()), "mod", probe=probe)
     assert e["result"]["entries"][0]["stale"] is True
+    assert e["freshness"] == "stale-graph"
 
 
 @pytest.mark.asyncio

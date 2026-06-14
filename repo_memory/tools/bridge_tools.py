@@ -8,6 +8,7 @@ from typing import Optional
 from repo_memory.contract import envelope
 from repo_memory.bridge.verify import verify_entries
 from repo_memory.graph.nodes import CBMGraphProbe
+from repo_memory.grounding import compute_freshness
 from repo_memory.tools.wiki_tools import provenance
 
 
@@ -34,6 +35,7 @@ async def get_related_files(state, module: str, *, probe=None) -> dict:
             return envelope(
                 {"module": module, "files": files,
                  "entries": [asdict(e) for e in mod.entries]},
+                freshness=compute_freshness(state),
                 warnings=["CBM unavailable; entries not verified"],
                 confidence=_avg_conf(mod.entries), unmatched=[asdict(u) for u in mod.unmatched],
                 provenance=provenance(state))
@@ -46,7 +48,7 @@ async def get_related_files(state, module: str, *, probe=None) -> dict:
     files = sorted({e.file for e in mod.entries})
     return envelope(
         {"module": module, "files": files, "entries": [asdict(e) for e in mod.entries]},
-        freshness=("stale-graph" if any_stale else "fresh"),
+        freshness=compute_freshness(state, entries_stale=any_stale),
         confidence=_avg_conf(mod.entries),
         unmatched=[asdict(u) for u in mod.unmatched],
         provenance=provenance(state))

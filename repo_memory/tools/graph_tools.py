@@ -5,17 +5,21 @@ from __future__ import annotations
 from repo_memory.contract import envelope
 from repo_memory.graph import forward
 from repo_memory.graph.client import CBMUnavailable
+from repo_memory.grounding import compute_freshness
 from repo_memory.tools.wiki_tools import provenance
 
 
 async def _run(state, coro_factory):
+    f = compute_freshness(state)
     if state.cbm is None:
-        return envelope(None, warnings=["CBM unavailable"], provenance=provenance(state))
+        return envelope(None, freshness=f, warnings=["CBM unavailable"],
+                        provenance=provenance(state))
     try:
         result = await coro_factory(state.cbm)
     except CBMUnavailable as exc:
-        return envelope(None, warnings=[f"CBM error: {exc}"], provenance=provenance(state))
-    return envelope(result, provenance=provenance(state))
+        return envelope(None, freshness=f, warnings=[f"CBM error: {exc}"],
+                        provenance=provenance(state))
+    return envelope(result, freshness=f, provenance=provenance(state))
 
 
 async def search_code_graph(state, *, name_pattern=None, label=None,
