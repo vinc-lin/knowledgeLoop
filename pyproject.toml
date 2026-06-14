@@ -103,7 +103,10 @@ packages = [
     "codewiki.src.be.dependency_analyzer.utils",
     "codewiki.src.fe",
     "repo_memory",
-    "repo_memory.bridge"
+    "repo_memory.bridge",
+    "repo_memory.graph",
+    "repo_memory.wiki",
+    "repo_memory.tools"
 ]
 
 [tool.setuptools.package-data]
