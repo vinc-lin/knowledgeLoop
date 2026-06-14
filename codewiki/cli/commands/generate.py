@@ -208,8 +208,8 @@ def _invalidate_affected_modules(
     "--output",
     "-o",
     type=click.Path(),
-    default="docs",
-    help="Output directory for generated documentation (default: ./docs)",
+    default="wiki-docs",
+    help="Output directory for generated documentation (default: ./wiki-docs)",
 )
 @click.option(
     "--create-branch",
@@ -326,7 +326,7 @@ def generate_command(
     Generate comprehensive documentation for a code repository.
     
     Analyzes the current repository and generates documentation using LLM-powered
-    analysis. Documentation is output to ./docs/ by default.
+    analysis. Documentation is output to ./wiki-docs/ by default.
     
     Examples:
     
@@ -480,7 +480,7 @@ def generate_command(
             create_branch=create_branch,
             github_pages=github_pages,
             no_cache=no_cache,
-            custom_output=output if output != "docs" else None
+            custom_output=output if output != "wiki-docs" else None
         )
         
         # Create runtime agent instructions from CLI options

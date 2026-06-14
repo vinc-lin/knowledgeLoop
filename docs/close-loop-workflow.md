@@ -58,7 +58,7 @@ Parses a repo and emits the architecture-knowledge bundle.
 | Per-module agent (API path) | `codewiki/src/be/pydantic_ai_backend.py` |
 | HTML viewer (only with `--github-pages`) | `codewiki/cli/html_generator.py` |
 
-**Output contract** (lands in the `--output` dir, default `./docs`): per-module `<Module>.md` (Mermaid
+**Output contract** (lands in the `--output` dir, default `./wiki-docs`): per-module `<Module>.md` (Mermaid
 fenced inline), `overview.md`, `module_tree.json` (the live tree — canonical ground truth) +
 `first_module_tree.json` (cached clustering), `metadata.json`, and optionally `index.html`. The raw
 dependency graph is written under a temp dependency-graphs dir in the output.
@@ -121,11 +121,11 @@ CLAUDE.md labels this "Future direction (not yet built)."
 ```bash
 # Run from the target repo. Provider/model come from ~/.codewiki/config.json + keyring.
 # CODEWIKI_NO_KEYRING=1 forces file-based creds in headless environments.
-codewiki generate --output ./docs --github-pages --verbose
+codewiki generate --output ./wiki-docs --github-pages --verbose
 codewiki generate --update        # incremental: diffs HEAD vs metadata commit_id
 codewiki generate --concurrency 4 # opt-in parallel module processing (default 1)
 ```
-Produces `./docs/*.md`, `module_tree.json`, `first_module_tree.json`, `metadata.json` (+ `index.html`).
+Produces `./wiki-docs/*.md`, `module_tree.json`, `first_module_tree.json`, `metadata.json` (+ `index.html`).
 
 ### (b) Build the entity_map bridge
 The offline join is `build_and_save` in `repo_memory/entity_map_build.py` (walks `wiki.module_tree`,
@@ -139,7 +139,7 @@ spawned, and runs over **stdio**:
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `REPO_MEMORY_WIKI_DIR` | `docs` | where the CodeWiki bundle lives |
+| `REPO_MEMORY_WIKI_DIR` | `wiki-docs` | where the CodeWiki bundle lives |
 | `REPO_MEMORY_ENTITY_MAP` | `entity_map.json` | bridge artifact path |
 | `REPO_MEMORY_REPO_PATH` | `os.getcwd()` | repo root (used by `refresh_index`) |
 

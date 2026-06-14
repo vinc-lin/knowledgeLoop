@@ -173,7 +173,7 @@ class ConfigManager:
                     main_model="",
                     cluster_model="",
                     fallback_model="glm-4p5",
-                    default_output="docs",
+                    default_output="wiki-docs",
                     agent_instructions=AgentInstructions()
                 )
         

@@ -353,7 +353,7 @@ def config_show(output_json: bool):
                 "main_model": config.main_model if config else "",
                 "cluster_model": config.cluster_model if config else "",
                 "fallback_model": config.fallback_model if config else "glm-4p5",
-                "default_output": config.default_output if config else "docs",
+                "default_output": config.default_output if config else "wiki-docs",
                 "max_tokens": config.max_tokens if config else 32768,
                 "max_token_per_module": config.max_token_per_module if config else 36369,
                 "max_token_per_leaf_module": config.max_token_per_leaf_module if config else 16000,

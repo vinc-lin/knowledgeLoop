@@ -127,7 +127,7 @@ class Configuration:
     main_model: str
     cluster_model: str
     fallback_model: str = "glm-4p5"
-    default_output: str = "docs"
+    default_output: str = "wiki-docs"
     provider: str = "openai-compatible"
     aws_region: str = "us-east-1"
     api_version: str = "2024-12-01-preview"
@@ -203,7 +203,7 @@ class Configuration:
             main_model=data.get('main_model', ''),
             cluster_model=data.get('cluster_model', ''),
             fallback_model=data.get('fallback_model', 'glm-4p5'),
-            default_output=data.get('default_output', 'docs'),
+            default_output=data.get('default_output', 'wiki-docs'),
             provider=data.get('provider', 'openai-compatible'),
             aws_region=data.get('aws_region', 'us-east-1'),
             api_version=data.get('api_version', '2024-12-01-preview'),

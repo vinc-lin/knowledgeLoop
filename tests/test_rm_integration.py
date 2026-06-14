@@ -56,7 +56,7 @@ async def test_assess_impact_blocks_when_graph_absent():
         pytest.skip(f"CBM unavailable: {exc}")
     try:
         # repo_head set but no entity_map -> graph_is_current False -> blocked
-        st = AppState(wiki_dir="docs", entity_map_path="missing.json",
+        st = AppState(wiki_dir="wiki-docs", entity_map_path="missing.json",
                       repo_head=_repo_head(), cbm=client, entity_map=None)
         e = await assess_impact(st)
         assert e["result"] is None
@@ -81,8 +81,8 @@ async def test_refresh_then_assess_impact_is_current(tmp_path):
     except Exception as exc:
         pytest.skip(f"CBM unavailable: {exc}")
     try:
-        wiki = load_wiki("docs")
-        st = AppState(wiki_dir="docs", entity_map_path=str(tmp_path / "em.json"),
+        wiki = load_wiki("wiki-docs")
+        st = AppState(wiki_dir="wiki-docs", entity_map_path=str(tmp_path / "em.json"),
                       repo_head=_repo_head(), repo_path=REPO_ROOT, cbm=client, wiki=wiki)
         e = await refresh(st)
         assert e["result"]["reindexed"] is True

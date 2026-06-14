@@ -59,7 +59,7 @@ CODEWIKI_NO_KEYRING=1 .venv/bin/codewiki config show      # resolved profile + c
 CODEWIKI_NO_KEYRING=1 .venv/bin/codewiki config validate  # tests gateway connectivity
 
 # Generate docs for the current repo (run from the target repo's directory).
-codewiki generate --output ./docs --github-pages --verbose
+codewiki generate --output ./wiki-docs --github-pages --verbose
 codewiki generate --concurrency 4   # opt-in parallel module processing (default 1)
 ```
 

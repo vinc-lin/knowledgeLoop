@@ -71,8 +71,8 @@ async def list_tools() -> list[Tool]:
                     },
                     "output_dir": {
                         "type": "string",
-                        "description": "Output directory for generated docs (default: ./docs)",
-                        "default": "docs",
+                        "description": "Output directory for generated docs (default: ./wiki-docs)",
+                        "default": "wiki-docs",
                     },
                     "doc_type": {
                         "type": "string",
@@ -124,8 +124,8 @@ async def list_tools() -> list[Tool]:
                     },
                     "output_dir": {
                         "type": "string",
-                        "description": "Directory containing generated docs (default: ./docs)",
-                        "default": "docs",
+                        "description": "Directory containing generated docs (default: ./wiki-docs)",
+                        "default": "wiki-docs",
                     },
                 },
                 "required": ["repo_path"],
@@ -154,7 +154,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 async def _handle_generate_docs(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle generate_docs tool call."""
     repo_path = Path(arguments["repo_path"]).expanduser().resolve()
-    output_dir = Path(arguments.get("output_dir", "docs")).expanduser().resolve()
+    output_dir = Path(arguments.get("output_dir", "wiki-docs")).expanduser().resolve()
 
     if not repo_path.exists():
         return [TextContent(type="text", text=f"Repository not found: {repo_path}")]
@@ -268,7 +268,7 @@ async def _handle_analyze_repo(arguments: dict[str, Any]) -> list[TextContent]:
 async def _handle_get_module_tree(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle get_module_tree tool call — returns existing module tree."""
     repo_path = Path(arguments["repo_path"]).expanduser().resolve()
-    output_dir = Path(arguments.get("output_dir", "docs")).expanduser().resolve()
+    output_dir = Path(arguments.get("output_dir", "wiki-docs")).expanduser().resolve()
 
     module_tree_path = output_dir / "module_tree.json"
     if not module_tree_path.exists():

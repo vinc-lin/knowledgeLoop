@@ -129,7 +129,7 @@ def build_app(*, wiki_dir: str, entity_map_path: str,
 
 
 def main() -> None:
-    wiki_dir = os.environ.get("REPO_MEMORY_WIKI_DIR", "docs")
+    wiki_dir = os.environ.get("REPO_MEMORY_WIKI_DIR", "wiki-docs")
     entity_map_path = os.environ.get("REPO_MEMORY_ENTITY_MAP", "entity_map.json")
     repo_path = os.environ.get("REPO_MEMORY_REPO_PATH", os.getcwd())
     project = os.environ.get("REPO_MEMORY_CBM_PROJECT")  # optional override; else auto-resolved
