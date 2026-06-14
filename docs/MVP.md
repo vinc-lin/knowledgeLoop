@@ -220,6 +220,7 @@ Every tool returns `envelope(...)`:
 
 ## 7. Pointers
 
+- [`docs/SETUP.md`](SETUP.md) — from-zero install/run quickstart (prerequisites, launch command, MCP-client config, troubleshooting).
 - [`docs/close-loop-workflow.md`](close-loop-workflow.md) — produce/bridge/consume/feed-back narrative + stage map.
 - [`docs/repo_memory-deploy.md`](repo_memory-deploy.md) — deploy-profile operator guide (profiles, knobs, recipes, version pin).
 - [`CLAUDE.md`](../CLAUDE.md) — high-signal repo essentials; marks the consume-and-feed-back loop as future direction.
