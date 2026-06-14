@@ -37,3 +37,29 @@ async def test_cbm_roundtrip_and_enumeration():
         assert "Configuration" in names  # known codewiki class is grounded
     finally:
         await client.aclose()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_assess_impact_blocks_when_graph_absent():
+    """With no built entity_map (graph not current), assess_impact must fail closed."""
+    import shutil
+    from repo_memory.state import AppState
+    from repo_memory.graph.client import CBMClient
+    from repo_memory.tools.hybrid_tools import assess_impact
+    if shutil.which("uvx") is None:
+        pytest.skip("uvx not available")
+    client = CBMClient()
+    try:
+        await client.start()
+    except Exception as exc:
+        pytest.skip(f"CBM unavailable: {exc}")
+    try:
+        # repo_head set but no entity_map -> graph_is_current False -> blocked
+        st = AppState(wiki_dir="docs", entity_map_path="missing.json",
+                      repo_head=_repo_head(), cbm=client, entity_map=None)
+        e = await assess_impact(st)
+        assert e["result"] is None
+        assert any("not current" in w or "CBM" in w for w in e["warnings"])
+    finally:
+        await client.aclose()
