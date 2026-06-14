@@ -69,3 +69,19 @@ async def test_degrades_without_wiki(monkeypatch):
         AsyncMock(return_value={"result": {"results": []}, "warnings": []}))
     e = await H.explain_with_sources(st, "anything")
     assert e["result"]["narrative"] == "" and any("wiki" in w for w in e["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_degrades_when_cbm_down_but_wiki_present():
+    # No monkeypatch: real composition. cbm=None -> get_related_files serves the
+    # precomputed entity_map entries (unverified) and snippets come back empty.
+    from repo_memory.bridge.schema import EntityMap, ModuleMap, EntityEntry
+    em = EntityMap("r", "c", "r", [ModuleMap("ingestion", None, "src/ingest",
+            [EntityEntry("Pipe", "src/ingest/p.py", "ingest.Pipe", [1, 9], "exact", 1.0)], [])])
+    st = AppState(wiki_dir="w", entity_map_path="e", repo_head="r", cbm=None,
+                  wiki=_wiki(), entity_map=em)
+    e = await H.explain_with_sources(st, "Ingestion")   # matches "# Ingestion" -> module resolves
+    assert e["result"]["module"] == "ingestion"
+    assert e["result"]["evidence"]                       # entity-map evidence still served
+    assert e["result"]["evidence"][0]["snippet"] == ""   # no live snippet (CBM down)
+    assert any("CBM" in w for w in e["warnings"])         # degradation warning surfaced
