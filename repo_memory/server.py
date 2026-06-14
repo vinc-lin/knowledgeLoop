@@ -11,20 +11,22 @@ from mcp.server.fastmcp import FastMCP
 from repo_memory.state import load_app_state
 from repo_memory.graph.client import CBMClient
 from repo_memory.tools import wiki_tools, bridge_tools, graph_tools, hybrid_tools
+from repo_memory.refresh import refresh as _do_refresh
 
 TOOL_NAMES = [
     "get_repo_overview", "list_modules", "search_wiki", "get_module_doc",
     "get_related_files",
     "search_code_graph", "trace_symbol", "get_code_snippet", "get_architecture",
     "explain_with_sources", "assess_impact",
+    "refresh_index",
 ]
 
 
 def build_app(*, wiki_dir: str, entity_map_path: str,
-              repo_head: Optional[str] = None,
+              repo_head: Optional[str] = None, repo_path: Optional[str] = None,
               cbm_command: Optional[list] = None) -> FastMCP:
     state = load_app_state(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
-                           repo_head=repo_head)
+                           repo_head=repo_head, repo_path=repo_path)
 
     @asynccontextmanager
     async def lifespan(_app):
@@ -112,10 +114,19 @@ def build_app(*, wiki_dir: str, entity_map_path: str,
     async def _impact(base_branch: str = None) -> dict:
         return await hybrid_tools.assess_impact(state, base_branch=base_branch)
 
+    @app.tool(name="refresh_index",
+              description="Re-index the code graph and rebuild the Wiki<->Graph map to restore "
+                          "freshness. Call when a tool reports stale-graph or a verified tool "
+                          "blocks. (Does NOT regenerate the wiki docs.)")
+    async def _refresh() -> dict:
+        return await _do_refresh(state)
+
     return app
 
 
 def main() -> None:  # pragma: no cover - process entry point
     wiki_dir = os.environ.get("REPO_MEMORY_WIKI_DIR", "docs")
     entity_map_path = os.environ.get("REPO_MEMORY_ENTITY_MAP", "entity_map.json")
-    build_app(wiki_dir=wiki_dir, entity_map_path=entity_map_path).run(transport="stdio")
+    repo_path = os.environ.get("REPO_MEMORY_REPO_PATH", os.getcwd())
+    build_app(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
+              repo_path=repo_path).run(transport="stdio")

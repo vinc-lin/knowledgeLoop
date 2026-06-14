@@ -11,6 +11,6 @@ async def test_registers_eleven_named_tools():
     tools = await app.list_tools()
     names = {t.name for t in tools}
     assert names == set(TOOL_NAMES)
-    assert len(TOOL_NAMES) == 11
+    assert len(TOOL_NAMES) == 12
     for t in tools:
         assert t.description and len(t.description) > 20  # routing-aware descriptions
