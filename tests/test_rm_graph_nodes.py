@@ -34,3 +34,28 @@ async def test_enumerate_paginates_and_dedups():
     qns = sorted(n.qualified_name for n in nodes)
     assert qns == ["m.A", "m.B"]  # deduped by qualified_name
     assert c.call_tool_with_restart.await_count == 2
+
+
+from repo_memory.graph.nodes import CBMGraphProbe
+
+
+@pytest.mark.asyncio
+async def test_probe_prefetch_then_sync_lookup():
+    found = {"results": [{"name": "Cfg", "qualified_name": "p.m.Cfg",
+                          "file_path": "p/m.py", "start_line": 1, "end_line": 5}]}
+    c = AsyncMock()
+    c.call_tool_with_restart = AsyncMock(return_value=found)
+    probe = CBMGraphProbe(c)
+    await probe.prefetch(["p.m.Cfg"])
+    node = probe.lookup("p.m.Cfg")
+    assert node is not None and node.start_line == 1
+    assert probe.lookup("p.m.Missing") is None  # not prefetched/found -> None
+
+
+@pytest.mark.asyncio
+async def test_probe_absent_node_not_cached():
+    c = AsyncMock()
+    c.call_tool_with_restart = AsyncMock(return_value={"results": []})
+    probe = CBMGraphProbe(c)
+    await probe.prefetch(["p.m.Gone"])
+    assert probe.lookup("p.m.Gone") is None

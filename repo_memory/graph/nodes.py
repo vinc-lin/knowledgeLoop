@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Iterable, Optional
 
 from repo_memory.bridge.schema import NodeRecord
@@ -43,3 +44,30 @@ async def enumerate_nodes_for_files(client, files: list[str], *,
                 break
             offset += page_size
     return list(seen.values())
+
+
+class CBMGraphProbe:
+    """Synchronous M1 GraphProbe backed by a prefetched CBM cache."""
+
+    def __init__(self, client):
+        self._client = client
+        self._cache: dict[str, NodeRecord] = {}
+
+    async def prefetch(self, qns: Iterable[str]) -> None:
+        for qn in qns:
+            if qn in self._cache:
+                continue
+            node = await self._lookup_remote(qn)
+            if node is not None:
+                self._cache[qn] = node
+
+    def lookup(self, node_id: str) -> Optional[NodeRecord]:
+        return self._cache.get(node_id)
+
+    async def _lookup_remote(self, qn: str) -> Optional[NodeRecord]:
+        short = qn.rsplit(".", 1)[-1]
+        resp = await forward.search_graph(self._client, name_pattern=f"^{re.escape(short)}$")
+        for row in _rows(resp):
+            if (row.get("qualified_name") or row.get("name")) == qn:
+                return row_to_node(row)
+        return None
