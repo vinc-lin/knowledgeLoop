@@ -1,8 +1,8 @@
 # Close-Loop Workflow
 
-> **Status (2026-06-14):** the produce + consume halves exist; the feed-back half is aspirational, and
-> the graph tools are currently **broken against the published CBM** (see Known Gaps). Mark every
-> stage/tool against its real status — do not assume the loop closes end-to-end yet.
+> **Status (2026-06-14):** the produce + consume halves exist and the graph tools now work end-to-end
+> against the published CBM (0.8.1, validated); the feed-back half remains aspirational. The consume
+> side is fully wired, but the loop is not yet *closed* — nothing feeds execution results back.
 
 knowledgeLoop's "close the loop" system is built in three conceptual halves, two of which exist today
 and one that is aspirational. **CodeWiki PRODUCES** architecture knowledge — it parses a repo with
@@ -30,7 +30,7 @@ flowchart LR
         em["entity_map.json<br/>module → files+symbols"]
     end
     bridge --> consume
-    subgraph consume["CONSUME — repo_memory MCP (Built / Partial / Broken)"]
+    subgraph consume["CONSUME — repo_memory MCP (Built)"]
         facade["FastMCP facade<br/>12 tools + envelope + freshness"]
     end
     facade --> agent["Agent"]
@@ -69,7 +69,7 @@ commit_id}` (built in `documentation_generator.py` ~L231-236), plus `statistics`
 only affected `<node>.md`. (The dogfooded CBM wiki at `../codebase-memory-mcp/codewiki-docs` has
 `commit_id: null` — relevant to freshness below.)
 
-### Stage 2 — BRIDGE: Wiki↔Graph entity_map — **Partial**
+### Stage 2 — BRIDGE: Wiki↔Graph entity_map — **Built**
 Joins wiki `module_tree` components (`file::Symbol`) to CBM `NodeRecord`s, grading each match.
 
 | Concern | Component |
@@ -82,11 +82,11 @@ Joins wiki `module_tree` components (`file::Symbol`) to CBM `NodeRecord`s, gradi
 | CBM row→node adapter + `CBMGraphProbe` | `repo_memory/graph/nodes.py` |
 
 Match strategies + confidence: `exact=1.0` → `qualified_suffix=0.85` → `file_only=0.5` →
-`unmatched=0.0`. **Partial because the build enumerates the graph via `forward.search_graph`, which is
-broken against real CBM** (see Gaps) — so a clean build only works against a mocked/compatible graph,
-though the join *logic* itself is sound and tested offline.
+`unmatched=0.0`. The build enumerates the graph via `forward.search_graph` (now passing the resolved
+CBM `project`), so it works against live CBM 0.8.1 as well as offline mocks; the join logic is tested
+offline and validated end-to-end.
 
-### Stage 3 — CONSUME: repo_memory MCP facade — **Built (wiki) / Partial (bridge) / Broken (graph)**
+### Stage 3 — CONSUME: repo_memory MCP facade — **Built**
 One FastMCP server (`repo_memory`) exposing 12 tools, each returning the uniform envelope.
 
 | Concern | Component |
@@ -130,9 +130,8 @@ Produces `./docs/*.md`, `module_tree.json`, `first_module_tree.json`, `metadata.
 ### (b) Build the entity_map bridge
 The offline join is `build_and_save` in `repo_memory/entity_map_build.py` (walks `wiki.module_tree`,
 unions component files, `enumerate_nodes_for_files` → `build_entity_map`, sets `graph_commit=repo_head`,
-writes `entity_map.json`). It is also invoked by `refresh_index` at runtime. **Note:** it enumerates the
-graph through the broken `forward.search_graph`, so a clean build against live CBM 0.8.1 currently fails
-(see Gaps).
+writes `entity_map.json`). It takes the resolved CBM `project` and is also invoked by `refresh_index` at
+runtime (which captures the project CBM returns on index). Works against live CBM 0.8.1.
 
 ### (c) Launch the repo_memory MCP facade
 `main()` reads exactly three env vars, then `resolve_launch_spec(os.environ)` computes how CBM is
@@ -170,14 +169,17 @@ TMP, TEMP, USERPROFILE`.
 | `list_modules` | List wiki module names / boundaries | Wiki — Built |
 | `search_wiki` | Keyword (substring) search over module docs | Wiki — Built |
 | `get_module_doc` | One module's doc + path + components | Wiki — Built |
-| `get_related_files` | Map a wiki module → real files+symbols (graph-verified); also returns `unmatched` | Bridge — Partial |
-| `search_code_graph` | Structural symbol search (name/label/file, `limit=200`) | Graph — Broken vs real CBM |
-| `trace_symbol` | Caller/callee call-path trace (`direction="both"`, `depth=3`) | Graph — Broken |
-| `get_code_snippet` | Source for a symbol by `qualified_name` | Graph — Broken |
-| `get_architecture` | Graph-level architecture summary | Graph — Broken |
-| `explain_with_sources` | How/why answer (wiki narrative + graph-verified evidence) | Hybrid — Partial (graph half dead) |
-| `assess_impact` | Fail-closed blast-radius; blocks if graph not current | Hybrid — Broken vs real CBM |
-| `refresh_index` | Re-index graph + rebuild Wiki↔Graph map (NOT wiki regen) | Recovery — Broken vs real CBM |
+| `get_related_files` | Map a wiki module → real files+symbols (graph-verified); also returns `unmatched` | Bridge — Built |
+| `search_code_graph` | Structural symbol search (name/label/file, `limit=200`) | Graph — Built |
+| `trace_symbol` | Caller/callee call-path trace (`direction="both"`, `depth=3`) | Graph — Built |
+| `get_code_snippet` | Source for a symbol by `qualified_name` | Graph — Built |
+| `get_architecture` | Graph-level architecture summary | Graph — Built |
+| `explain_with_sources` | How/why answer (wiki narrative + graph-verified evidence) | Hybrid — Built |
+| `assess_impact` | Fail-closed blast-radius; blocks if graph not current | Hybrid — Built |
+| `refresh_index` | Re-index graph + rebuild Wiki↔Graph map (NOT wiki regen) | Recovery — Built |
+
+The graph/hybrid tools require the repo to be **indexed in CBM** (so the `project` resolves); if it
+isn't, they degrade with a `repo not indexed in CBM (run refresh_index)` warning rather than failing.
 
 ---
 
@@ -214,7 +216,7 @@ Freshness values (`grounding.compute_freshness`, precedence **graph > wiki**):
   verification is required) gate on this.
 
 **Recovery — `refresh_index` → `refresh(state)`** (`repo_memory/refresh.py`): degrades gracefully if
-`cbm`/`wiki` are missing, else calls `forward.index_repository(path=state.repo_path or ".")`, then
+`cbm`/`wiki` are missing, else calls `forward.index_repository(repo_path=state.repo_path or ".")` (capturing the project CBM returns), then
 `build_and_save(...)` rebuilds + saves the entity_map with `graph_commit = repo_head` (which is what
 makes `graph_is_current` pass again). It **does not** touch `wiki_commit` or regenerate wiki docs, so a
 stale wiki stays `stale-wiki` after a refresh.
@@ -224,39 +226,20 @@ stale wiki stays `stale-wiki` after a refresh.
 
 ---
 
-## Known gaps — NOT yet closed
+## Gaps & status (1 resolved, 2 open)
 
-### 1. CBM 0.8.1 graph-API mismatch — BREAKS all forwarded graph tools
-`repo_memory/graph/forward.py` does not match CBM 0.8.1's required argument schema. Verified two ways
-this session: **live introspection** of the running CBM (`ClientSession.list_tools()`) and a **runtime
-error** from the deploy-config integration test.
+### 1. CBM 0.8.1 graph-API mismatch — RESOLVED (fixed 2026-06-14, commit `9529146`)
+Previously `repo_memory/graph/forward.py` omitted the `project` id that CBM 0.8.1 marks **required** on
+every graph query (`search_graph`/`trace_path`/`get_code_snippet`/`get_architecture`/`detect_changes`)
+and used `path` instead of `repo_path` for `index_repository`, so every forwarded graph/hybrid tool
+failed end-to-end against the published CBM.
 
-- **Missing required `project`:** `search_graph`, `trace_path`, `get_code_snippet`, `get_architecture`,
-  and `detect_changes` all omit `project`. CBM 0.8.1's live schema marks `project` as **required** for
-  each of these (e.g. `search_graph.required = ['project']`, `trace_path.required =
-  ['function_name','project']`), with no implicit-project fallback. Only `index_status` passes
-  `project`.
-- **Wrong key for indexing:** `index_repository` sends `{"path": path}`, but CBM 0.8.1 requires
-  `repo_path` (`index_repository.required = ['repo_path']`). The live call returns the error
-  `repo_path is required`.
-
-CBM returns `isError` → `CBMClient.parse_tool_result` raises `CBMUnavailable` → the graph tools wrap it
-as `warnings=["CBM error: ..."]` with a `null` result. **Net effect against real CBM:**
-`search_code_graph`, `trace_symbol`, `get_code_snippet`, `get_architecture`, `explain_with_sources`
-(graph half), `assess_impact` (`detect_changes`), `refresh_index` (`index_repository`), and the
-entity_map (re)build (enumeration via `search_graph`) all fail end-to-end and degrade to empty
-envelopes.
-
-`AppState` (`repo_memory/state.py`) has **no `project` field** — there is no plumbing to carry a CBM
-project id, so the fix requires threading a project identifier through every forward call plus the
-`index_repository` key change.
-
-**The bug is masked by tests:** `tests/test_rm_graph_forward.py` asserts the project-less args as
-*correct* against an `AsyncMock` CBM (green = bug locked in); the only live test
-(`tests/test_rm_deploy.py`, `test_injected_cache_dir_is_used`) calls `index_repository` *directly* with
-the correct `{"repo_path": ...}` key (bypassing the buggy wrapper) and self-skips when CBM is absent.
-This is recorded in the agent memory note `repo-memory-cbm-graph-api-mismatch`; it warrants its own
-brainstorm → spec → plan and is merge-critical for any loop-closure.
+**Fixed:** `project` is now threaded through every forward call. It is resolved **from CBM** — the name
+`index_repository` returns, or `list_projects` matched by `root_path` — cached on `AppState.project`,
+with an optional `REPO_MEMORY_CBM_PROJECT` override (`repo_memory/graph/project.py`); `index_repository`
+now uses `repo_path`. When the repo isn't indexed yet, the tools degrade with a clear
+`run refresh_index` warning instead of erroring. Validated end-to-end against real CBM 0.8.1
+(`search_code_graph`/`get_architecture`/`trace_symbol`/`get_code_snippet` return real results).
 
 ### 2. `get_related_files` serves unverified entries when CBM is down — **Partial**
 It works from a prebuilt `entity_map.json`, but verify-on-access needs the live graph; with CBM
