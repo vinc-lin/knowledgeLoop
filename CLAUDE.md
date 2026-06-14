@@ -4,6 +4,12 @@ Guidance for AI agents working in this repository. Keep it concise — for deep
 detail see `README.md` (users) and `DEVELOPMENT.md` (architecture, extending,
 debugging). This file captures the high-signal, non-obvious essentials.
 
+- `docs/findings-and-practices.md` — operational learnings from real generation runs
+  (the source distilled into the Gotchas below).
+- `docs/superpowers/specs/` + `docs/superpowers/plans/` — design specs & implementation
+  plans for recent/in-flight features (canonical doc filenames, decompose-on-overflow,
+  body-link consistency).
+
 ## What this is
 
 **knowledgeLoop** is a foundation copied **verbatim from CodeWiki**. The internal
@@ -23,13 +29,13 @@ back — "closing the loop." Today the repo is just that foundation.
 ## Setup
 
 - **Python 3.12+ is required** (`pyproject.toml` `requires-python = ">=3.12"`).
+- **Node.js ≥14 is required** for Mermaid diagram validation (`mermaid-py`, used by the
+  agent's `str_replace_editor`); without it those checks can't run. (`pyproject.toml [external]`.)
 - This project ships **no committed `.venv`**; create one:
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e .
-# dev/test extras:
-uv pip install --python .venv/bin/python pytest pytest-asyncio pytest-cov
+uv pip install --python .venv/bin/python -e ".[dev]"   # runtime + tests (pytest/cov/asyncio) + lint (ruff/black/mypy)
 ```
 
 ## Common commands
@@ -38,6 +44,11 @@ uv pip install --python .venv/bin/python pytest pytest-asyncio pytest-cov
 # Tests (pyproject enables --cov, so pytest-cov must be installed;
 # otherwise append --no-cov). -p no:cacheprovider avoids writing .pytest_cache.
 .venv/bin/python -m pytest tests/ -p no:cacheprovider
+
+# Lint / format / type-check (configs in pyproject; line-length 100, target py312).
+.venv/bin/ruff check codewiki/      # lint
+.venv/bin/black codewiki/           # format (use --check in CI)
+.venv/bin/mypy codewiki/            # type-check (config is permissive)
 
 # Configure a provider/model (CODEWIKI_NO_KEYRING=1 forces file-based creds in
 # headless environments without a system keychain).
@@ -101,4 +112,8 @@ back-fills it automatically with **explicit-CLI-values-win** precedence.
   by raising the request limit.
 - Diagnostics: `run_module_agent` logs a per-module tool-call histogram (read-id
   reuse, edit counts) — use it to trace non-converging agent loops.
+- Generated doc filenames are **canonicalized at the end of generation** (H1-derived
+  names + path-separator sanitization, in `documentation_generator.py`); the HTML nav
+  slug and in-doc links must round-trip with it (URL-encoded fetch). Change one, keep all
+  three consistent — see `docs/superpowers/specs/2026-06-14-*`.
 - Match the surrounding code style; keep the `codewiki` package/CLI names as-is.
