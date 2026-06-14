@@ -78,13 +78,12 @@ freshness anchor used later.
 
 ## 5. Launch the `repo_memory` MCP server (consume)
 
-`repo_memory` has a `main()` but **no console-script / `python -m` runner yet**, so
-launch it by invoking `main()` directly with the venv's Python. It serves over
-**stdio**:
+Installing the package registers a **`repo-memory`** console script
+(`repo_memory.server:main`) that runs the facade over **stdio**:
 
 ```bash
 # run from the target repo (REPO_MEMORY_REPO_PATH defaults to the cwd)
-.venv/bin/python -c "from repo_memory.server import main; main()"
+.venv/bin/repo-memory
 ```
 
 Key environment variables (full list + CBM knobs in
@@ -103,8 +102,8 @@ Register it in an MCP client (use **absolute** paths):
 {
   "mcpServers": {
     "repo_memory": {
-      "command": "/abs/path/to/.venv/bin/python",
-      "args": ["-c", "from repo_memory.server import main; main()"],
+      "command": "/abs/path/to/.venv/bin/repo-memory",
+      "args": [],
       "env": {
         "REPO_MEMORY_REPO_PATH": "/abs/path/to/target/repo",
         "REPO_MEMORY_WIKI_DIR": "/abs/path/to/target/repo/wiki-docs"

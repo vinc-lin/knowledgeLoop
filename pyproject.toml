@@ -78,6 +78,7 @@ dev = [
 
 [project.scripts]
 codewiki = "codewiki.cli.main:cli"
+repo-memory = "repo_memory.server:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/codewiki"
