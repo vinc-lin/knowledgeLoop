@@ -1,5 +1,9 @@
 """Tests for the CBM deployment/config layer (resolver + client passthrough + wiring)."""
 
+import pytest
+
+from repo_memory.deploy import (
+    DEFAULT_CBM_VERSION, DeployConfigError, LaunchSpec, resolve_launch_spec)
 from repo_memory.graph.client import CBMClient
 
 
@@ -15,3 +19,73 @@ def test_cbmclient_env_and_cwd_default_to_none():
     client = CBMClient(["mybin"])
     assert client._params.env is None
     assert client._params.cwd is None
+
+
+def test_default_profile_is_dev_with_pinned_command():
+    spec = resolve_launch_spec(environ={})
+    assert isinstance(spec, LaunchSpec)
+    assert spec.command == ["uvx", f"codebase-memory-mcp@{DEFAULT_CBM_VERSION}"]
+    assert "CBM_CACHE_DIR" not in spec.env
+    assert spec.cwd is None
+
+
+def test_preserve_env_carries_through():
+    spec = resolve_launch_spec(environ={"HOME": "/h", "PATH": "/b", "IGNORED": "x"})
+    assert spec.env["HOME"] == "/h"
+    assert spec.env["PATH"] == "/b"
+    assert "IGNORED" not in spec.env
+
+
+def test_raw_cbm_knob_passthrough():
+    spec = resolve_launch_spec("dev", environ={"CBM_LOG_LEVEL": "debug"})
+    assert spec.env["CBM_LOG_LEVEL"] == "debug"
+
+
+def test_profile_env_applied():
+    spec = resolve_launch_spec("ephemeral", environ={}, cache_dir="/t")
+    assert spec.env["CBM_LOG_LEVEL"] == "warn"
+    assert spec.env["CBM_CACHE_DIR"] == "/t"
+
+
+def test_env_overrides_profile():
+    spec = resolve_launch_spec("ephemeral", environ={"CBM_LOG_LEVEL": "error"}, cache_dir="/t")
+    assert spec.env["CBM_LOG_LEVEL"] == "error"  # env > profile
+
+
+def test_cache_dir_arg_wins_over_env():
+    spec = resolve_launch_spec("ephemeral", environ={"CBM_CACHE_DIR": "/a"}, cache_dir="/b")
+    assert spec.env["CBM_CACHE_DIR"] == "/b"
+
+
+def test_requires_cache_dir_raises():
+    with pytest.raises(DeployConfigError):
+        resolve_launch_spec("ephemeral", environ={})
+
+
+def test_unknown_profile_raises():
+    with pytest.raises(DeployConfigError):
+        resolve_launch_spec("nope", environ={})
+
+
+def test_command_override_splits():
+    spec = resolve_launch_spec("dev", environ={"REPO_MEMORY_CBM_COMMAND": "/opt/cbm --foo"})
+    assert spec.command == ["/opt/cbm", "--foo"]
+
+
+def test_version_override():
+    spec = resolve_launch_spec("dev", environ={"REPO_MEMORY_CBM_VERSION": "9.9.9"})
+    assert spec.command == ["uvx", "codebase-memory-mcp@9.9.9"]
+
+
+def test_invalid_workers_dropped_valid_kept():
+    bad = resolve_launch_spec("dev", environ={"CBM_WORKERS": "0"})
+    assert "CBM_WORKERS" not in bad.env
+    good = resolve_launch_spec("dev", environ={"CBM_WORKERS": "4"})
+    assert good.env["CBM_WORKERS"] == "4"
+
+
+def test_profile_selected_from_environ():
+    spec = resolve_launch_spec(
+        environ={"REPO_MEMORY_CBM_PROFILE": "ephemeral", "CBM_CACHE_DIR": "/t"})
+    assert spec.env["CBM_CACHE_DIR"] == "/t"
+    assert spec.env["CBM_LOG_LEVEL"] == "warn"
