@@ -89,3 +89,32 @@ def test_profile_selected_from_environ():
         environ={"REPO_MEMORY_CBM_PROFILE": "ephemeral", "CBM_CACHE_DIR": "/t"})
     assert spec.env["CBM_CACHE_DIR"] == "/t"
     assert spec.env["CBM_LOG_LEVEL"] == "warn"
+
+
+def test_build_app_accepts_cbm_env_and_cwd(tmp_path):
+    from repo_memory.server import build_app
+    app = build_app(wiki_dir=str(tmp_path), entity_map_path=str(tmp_path / "em.json"),
+                    cbm_command=["uvx", "cbm@x"], cbm_env={"CBM_CACHE_DIR": "/t"}, cbm_cwd=None)
+    assert app is not None
+
+
+def test_main_wires_resolved_spec_into_build_app(monkeypatch):
+    import repo_memory.server as srv
+    from repo_memory.deploy import LaunchSpec
+    captured = {}
+
+    class FakeApp:
+        def run(self, **kw):
+            captured["transport"] = kw.get("transport")
+
+    monkeypatch.setattr(srv, "build_app", lambda **kw: (captured.update(kw) or FakeApp()))
+    monkeypatch.setattr(srv, "resolve_launch_spec",
+                        lambda **kw: LaunchSpec(command=["uvx", "cbm@x"],
+                                                env={"CBM_CACHE_DIR": "/t"}, cwd=None))
+    monkeypatch.setenv("REPO_MEMORY_WIKI_DIR", "docs")
+    srv.main()
+
+    assert captured["cbm_command"] == ["uvx", "cbm@x"]
+    assert captured["cbm_env"] == {"CBM_CACHE_DIR": "/t"}
+    assert captured["cbm_cwd"] is None
+    assert captured["transport"] == "stdio"

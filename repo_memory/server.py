@@ -12,6 +12,7 @@ from repo_memory.state import load_app_state
 from repo_memory.graph.client import CBMClient
 from repo_memory.tools import wiki_tools, bridge_tools, graph_tools, hybrid_tools
 from repo_memory.refresh import refresh as _do_refresh
+from repo_memory.deploy import resolve_launch_spec
 
 TOOL_NAMES = [
     "get_repo_overview", "list_modules", "search_wiki", "get_module_doc",
@@ -24,13 +25,15 @@ TOOL_NAMES = [
 
 def build_app(*, wiki_dir: str, entity_map_path: str,
               repo_head: Optional[str] = None, repo_path: Optional[str] = None,
-              cbm_command: Optional[list] = None) -> FastMCP:
+              cbm_command: Optional[list] = None,
+              cbm_env: Optional[dict] = None,
+              cbm_cwd: Optional[str] = None) -> FastMCP:
     state = load_app_state(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
                            repo_head=repo_head, repo_path=repo_path)
 
     @asynccontextmanager
     async def lifespan(_app):
-        client = CBMClient(cbm_command)
+        client = CBMClient(cbm_command, env=cbm_env, cwd=cbm_cwd)
         try:
             await client.start()
             state.cbm = client
@@ -124,9 +127,12 @@ def build_app(*, wiki_dir: str, entity_map_path: str,
     return app
 
 
-def main() -> None:  # pragma: no cover - process entry point
+def main() -> None:
     wiki_dir = os.environ.get("REPO_MEMORY_WIKI_DIR", "docs")
     entity_map_path = os.environ.get("REPO_MEMORY_ENTITY_MAP", "entity_map.json")
     repo_path = os.environ.get("REPO_MEMORY_REPO_PATH", os.getcwd())
+    spec = resolve_launch_spec(environ=os.environ)
     build_app(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
-              repo_path=repo_path).run(transport="stdio")
+              repo_path=repo_path,
+              cbm_command=spec.command, cbm_env=spec.env,
+              cbm_cwd=spec.cwd).run(transport="stdio")
