@@ -45,3 +45,14 @@ def test_degrades_without_wiki():
     st = AppState(wiki_dir="w", entity_map_path="e")
     e = wiki_tools.get_repo_overview(st)
     assert e["result"] is None and e["warnings"]
+
+
+def test_wiki_tools_report_freshness():
+    from repo_memory.bridge.schema import EntityMap
+    st = _state_with_wiki()
+    st.cbm = object()
+    st.wiki.wiki_commit = "r"
+    st.entity_map = EntityMap("r", "r", "r", [])
+    assert wiki_tools.get_repo_overview(st)["freshness"] == "fresh"
+    assert wiki_tools.list_modules(st)["freshness"] == "fresh"
+    assert wiki_tools.search_wiki(st, "x")["freshness"] == "fresh"
