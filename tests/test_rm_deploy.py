@@ -1,5 +1,7 @@
 """Tests for the CBM deployment/config layer (resolver + client passthrough + wiring)."""
 
+import os
+
 import pytest
 
 from repo_memory.deploy import (
@@ -118,3 +120,35 @@ def test_main_wires_resolved_spec_into_build_app(monkeypatch):
     assert captured["cbm_env"] == {"CBM_CACHE_DIR": "/t"}
     assert captured["cbm_cwd"] is None
     assert captured["transport"] == "stdio"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_injected_cache_dir_is_used(tmp_path):
+    """CBM started via the resolved spec writes its index under the injected CBM_CACHE_DIR."""
+    import shutil
+
+    if shutil.which("uvx") is None:
+        pytest.skip("uvx not available")
+
+    # a tiny repo to index
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "m.py").write_text("def hello():\n    return 1\n")
+
+    cache = tmp_path / "cbm-cache"
+    spec = resolve_launch_spec("ephemeral", environ=dict(os.environ), cache_dir=str(cache))
+
+    client = CBMClient(spec.command, env=spec.env, cwd=spec.cwd)
+    try:
+        await client.start()
+    except Exception as exc:
+        pytest.skip(f"CBM unavailable: {exc}")
+    try:
+        await client.call_tool_with_restart("index_repository", {"repo_path": str(repo)})
+    finally:
+        await client.aclose()
+
+    # CBM created its store under the injected cache dir, not the default ~/.cache location
+    assert cache.exists()
+    assert any(cache.rglob("*")), "expected CBM to write its index under the injected CBM_CACHE_DIR"
