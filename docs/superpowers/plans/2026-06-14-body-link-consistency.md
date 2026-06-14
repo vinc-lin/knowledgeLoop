@@ -246,7 +246,7 @@ to capture the rename list and run the link pass after it:
 
 - [ ] **Step 2: Verify the wiring**
 
-Run: `cd /mnt/x/code/knowledgeLoop && grep -n "canonicalize_doc_links(working_dir, renames)" codewiki/src/be/documentation_generator.py`
+Run: `cd knowledgeLoop && grep -n "canonicalize_doc_links(working_dir, renames)" codewiki/src/be/documentation_generator.py`
 Expected: one match (the new call site). Also confirm `renames = canonicalize_doc_filenames(` appears.
 
 - [ ] **Step 3: Run the full suite (no regressions)**
@@ -353,26 +353,26 @@ git commit -m "fix(wiki): loadDocument decodes before encoding (no double-encode
 Operational (no new unit tests). Rewrites this wiki's body links (incl. superseding the earlier broken raw-space edits) and regenerates `index.html` with the fixed `loadDocument`.
 
 **Files:**
-- Output: `/mnt/x/code/codebase-memory-mcp/codewiki-docs/` (body links + `index.html`)
+- Output: `codebase-memory-mcp/codewiki-docs/` (body links + `index.html`)
 
 - [ ] **Step 1: Snapshot (safety)**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 mkdir -p .prelinks && cp *.md index.html .prelinks/ 2>/dev/null && echo "snapshot saved (.prelinks)"
 ```
 
 - [ ] **Step 2: Run the link pass (+ filename pass, a no-op) + regenerate index.html**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 CODEWIKI_NO_KEYRING=1 .venv/bin/python - <<'PY'
 import json
 from pathlib import Path
 from codewiki.src.be.documentation_generator import canonicalize_doc_filenames, canonicalize_doc_links
 from codewiki.cli.html_generator import HTMLGenerator
 
-REPO = Path("/mnt/x/code/codebase-memory-mcp"); DOCS = REPO / "codewiki-docs"
+REPO = Path("codebase-memory-mcp"); DOCS = REPO / "codewiki-docs"
 EXTRA = {
     "csharpresolver": "C# Resolver.md", "cslsp": "C# Resolver.md",
     "tsjsresolver": "TypeScript_JavaScript Resolver.md",
@@ -401,7 +401,7 @@ Expected: `filename renames (expect none): []`; `link pass: {'rewritten': N>0, '
 - [ ] **Step 3: Audit — only genuinely-dead links remain**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 python3 - <<'PY'
 import os, re
 from urllib.parse import unquote
@@ -425,7 +425,7 @@ Expected: only the component/header targets (`arena.md`, `go_lsp.md`, `c_lsp.md`
 Confirm the regenerated `index.html` embeds the fixed loader, the fixed body links point at canonical targets, and those canonical files are served at the URLs the fixed `loadDocument` produces:
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 # 1) the fix is embedded in the regenerated wiki
 grep -c "decodeURIComponent" index.html        # expect >= 1
 

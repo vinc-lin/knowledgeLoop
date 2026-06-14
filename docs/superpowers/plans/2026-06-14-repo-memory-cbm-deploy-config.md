@@ -29,7 +29,7 @@ The `feat/repo-memory-m0-m1` branch is being developed by another session concur
 - [ ] **Step 1: Sync and isolate**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 git fetch --all
 git status                      # working tree should be clean except expected files
 git log --oneline -5            # note current HEAD of feat/repo-memory-m0-m1

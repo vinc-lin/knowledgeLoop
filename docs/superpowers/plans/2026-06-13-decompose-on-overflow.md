@@ -458,7 +458,7 @@ git commit -m "feat(backend): reactively decompose modules that overflow the out
 
 ## Task 5: Close the 3 gaps end-to-end and reconcile the wiki
 
-This task runs the new feature against the real target repo `/mnt/x/code/codebase-memory-mcp` (its `codewiki-docs/` is currently the restored, consistent 61-module state) and regenerates the wiki. It is operational (no new unit tests).
+This task runs the new feature against the real target repo `codebase-memory-mcp` (its `codewiki-docs/` is currently the restored, consistent 61-module state) and regenerates the wiki. It is operational (no new unit tests).
 
 **Files:**
 - Use: `/tmp/fill_gaps.py` (the isolated gap-fill script from this session)
@@ -482,7 +482,7 @@ Edit `/tmp/fill_gaps.py`:
 - [ ] **Step 2: Snapshot the current docs (safety)**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 cp module_tree.json module_tree.json.pretask5
 cp metadata.json metadata.json.pretask5
 ```
@@ -490,7 +490,7 @@ cp metadata.json metadata.json.pretask5
 - [ ] **Step 3: Run the gap-fill (background; ~parse + 3 module agents)**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 CODEWIKI_NO_KEYRING=1 .venv/bin/python /tmp/fill_gaps.py > /tmp/fill_gaps3.log 2>&1 &
 ```
 Watch `/tmp/fill_gaps3.log`. Expected: parse ~2.7k components; each gap either writes a single doc (fits) or logs the escalation warning and then writes a parent doc + sub-module docs. `overview.md` restored at the end; `>> DONE`.
@@ -498,7 +498,7 @@ Watch `/tmp/fill_gaps3.log`. Expected: parse ~2.7k components; each gap either w
 - [ ] **Step 4: Verify every tree node now resolves to a doc**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp
+cd codebase-memory-mcp
 .venv/bin/python - <<'PY'
 import json, os   # stdlib only
 wd = "codewiki-docs"
@@ -524,10 +524,10 @@ Expected: `none — all nodes documented` (the 3 gaps now resolve; Rust Resolver
 - [ ] **Step 5: Regenerate metadata and index.html from the updated tree**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 CODEWIKI_NO_KEYRING=1 .venv/bin/python - <<'PY'
 from codewiki.cli.html_generator import HTMLGenerator
-REPO = "/mnt/x/code/codebase-memory-mcp"
+REPO = "codebase-memory-mcp"
 DOCS = REPO + "/codewiki-docs"
 g = HTMLGenerator()
 info = g.detect_repository_info(REPO)
@@ -542,7 +542,7 @@ PY
 - [ ] **Step 6: Confirm the wiki is consistent and commit nothing in this repo**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 grep -oE 'Rust Resolver|Core Infrastructure|TypeScript/JavaScript Resolver' index.html | sort -u
 ls -1 *.md | wc -l   # > 61 (gaps + any sub-docs)
 ```
@@ -576,7 +576,7 @@ Expected: PASS (all tests).
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 git add docs/findings-and-practices.md
 git commit -m "docs: note decompose_on_overflow option for small-output models"
 ```

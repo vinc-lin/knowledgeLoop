@@ -1,6 +1,9 @@
 config/agent_config.yaml
 tool/add_header.sh
 
+# Local agent/editor tooling
+.claude/
+
 # Python
 .venv
 venv/

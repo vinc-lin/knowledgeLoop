@@ -319,7 +319,7 @@ In `generate_module_documentation`, immediately before `return working_dir` (the
 
 - [ ] **Step 2: Verify the call is present and well-formed**
 
-Run: `cd /mnt/x/code/knowledgeLoop && grep -n "canonicalize_doc_filenames(working_dir" codewiki/src/be/documentation_generator.py`
+Run: `cd knowledgeLoop && grep -n "canonicalize_doc_filenames(working_dir" codewiki/src/be/documentation_generator.py`
 Expected: two matches — the function definition and this new call site.
 
 - [ ] **Step 3: Run the full suite (no regressions)**
@@ -434,12 +434,12 @@ git commit -m "feat(wiki): nav uses canonical slug + URL-encodes doc fetch"
 Operational (no new unit tests). Renames the 8 mismatched docs and regenerates `index.html`.
 
 **Files:**
-- Output: `/mnt/x/code/codebase-memory-mcp/codewiki-docs/` (8 renames + `index.html`)
+- Output: `codebase-memory-mcp/codewiki-docs/` (8 renames + `index.html`)
 
 - [ ] **Step 1: Snapshot (safety)**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 mkdir -p .pretask_canon && cp *.md module_tree.json index.html .pretask_canon/ 2>/dev/null
 ls *.md | wc -l   # expect 70
 ```
@@ -447,14 +447,14 @@ ls *.md | wc -l   # expect 70
 - [ ] **Step 2: Run the canonicalization pass + regenerate index.html**
 
 ```bash
-cd /mnt/x/code/knowledgeLoop
+cd knowledgeLoop
 CODEWIKI_NO_KEYRING=1 .venv/bin/python - <<'PY'
 import json
 from pathlib import Path
 from codewiki.src.be.documentation_generator import canonicalize_doc_filenames
 from codewiki.cli.html_generator import HTMLGenerator
 
-REPO = Path("/mnt/x/code/codebase-memory-mcp")
+REPO = Path("codebase-memory-mcp")
 DOCS = REPO / "codewiki-docs"
 tree = json.load(open(DOCS / "module_tree.json"))
 renames = canonicalize_doc_filenames(str(DOCS), tree)
@@ -473,8 +473,8 @@ Expected: 8 renames (`go_resolver.md`→`Go Resolver.md`, `Java_Resolver.md`→`
 - [ ] **Step 3: Verify every node's canonical doc now exists**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
-CODEWIKI_NO_KEYRING=1 /mnt/x/code/knowledgeLoop/.venv/bin/python - <<'PY'
+cd codebase-memory-mcp/codewiki-docs
+CODEWIKI_NO_KEYRING=1 knowledgeLoop/.venv/bin/python - <<'PY'
 import json, os
 from codewiki.src.be.documentation_generator import canonical_doc_name
 tree = json.load(open("module_tree.json"))
@@ -492,7 +492,7 @@ Expected: `NONE — every node maps to an on-disk file`.
 - [ ] **Step 4: Sanity-check the nav references the canonical names**
 
 ```bash
-cd /mnt/x/code/codebase-memory-mcp/codewiki-docs
+cd codebase-memory-mcp/codewiki-docs
 grep -c '"C# Resolver"' index.html   # node key present in embedded tree
 ls "C# Resolver.md" "Rust Resolver.md" "TypeScript_JavaScript Resolver.md" >/dev/null && echo "canonical docs on disk OK"
 ```
@@ -503,6 +503,6 @@ Expected: the node key appears; the canonical files exist. (No commit in `knowle
 ## Self-Review notes (for the implementer)
 
 - The two-phase resolution is deliberate: do **all** normalized-name matches first, then H1-fallback the remainder, so a node never H1-grabs a file another node would name-match.
-- `os.path.samefile` is used to distinguish a genuine collision (different file at the canonical name → skip) from a case/separator-only rename on the case-insensitive `/mnt/x` mount (same file → two-step rename). Unit tests run on case-sensitive `/tmp`, where the plain rename path is exercised.
+- `os.path.samefile` is used to distinguish a genuine collision (different file at the canonical name → skip) from a case/separator-only rename on a case-insensitive mount (same file → two-step rename). Unit tests run on case-sensitive `/tmp`, where the plain rename path is exercised.
 - The parity test extracts the **actual** `slug()` body from the template and runs it under Node, so the Python and JS rules cannot silently drift.
 - Acceptance for the whole plan: new tests pass, full suite green, and every node in the `codebase-memory-mcp` tree resolves to an on-disk canonical doc with a regenerated `index.html`.

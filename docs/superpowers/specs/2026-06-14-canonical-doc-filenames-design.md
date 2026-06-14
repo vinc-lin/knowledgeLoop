@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-14
 - **Status:** Approved (design) — pending implementation plan
-- **Author:** vinc (with Claude)
+- **Author:** CodeWiki Contributors (with Claude)
 
 ## 1. Problem
 
@@ -40,7 +40,7 @@ resolver docs), independent of any single generation run.
   orphans.**
 - Only **2 keys** contain special characters: `C# Resolver` (`#`) and
   `TypeScript/JavaScript Resolver` (`/`).
-- `/mnt/x` is a **case-insensitive** Windows mount; GitHub Pages (deploy target)
+- The dev filesystem can be a **case-insensitive** mount; GitHub Pages (deploy target)
   is **case-sensitive** — so renames must use the *actual* on-disk filename and
   produce the *exact* canonical casing.
 

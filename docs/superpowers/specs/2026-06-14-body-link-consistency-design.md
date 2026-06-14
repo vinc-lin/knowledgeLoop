@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-14
 - **Status:** Approved (design) — pending implementation plan
-- **Author:** vinc (with Claude)
+- **Author:** CodeWiki Contributors (with Claude)
 
 ## 1. Problem
 
