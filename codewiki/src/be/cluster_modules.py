@@ -13,18 +13,63 @@ from codewiki.src.be.prompt_template import format_cluster_prompt
 Completer = Callable[[str], str]
 
 
+def reconcile_leaf_nodes(
+    leaf_nodes: List[str], components: Dict[str, Node]
+) -> tuple[List[str], List[str]]:
+    """Reconcile LLM-proposed leaf node identifiers against real component keys.
+
+    The cluster LLM often fails to transcribe component ids verbatim: it
+    collapses ``path::symbol`` to a bare ``path`` (dropping the symbol) or
+    fabricates a plausible ``::symbol`` suffix (e.g. ``adder_test.cpp::adder_test``
+    when the real component is ``adder_test.cpp::TEST``).  An exact-match filter
+    drops these silently, losing real components from the module tree.
+
+    Recovery is by **file path**: any identifier that is not itself a valid
+    component key is mapped to every component whose key shares the same file
+    path (the part before ``::``).  Identifiers whose file has no components at
+    all (header-only declarations, unparsed CMake/GLSL) cannot be recovered and
+    are returned as ``unresolved``.
+
+    Returns ``(resolved, unresolved)``.  ``resolved`` is de-duplicated and keeps
+    first-seen order.
+    """
+    by_file: Dict[str, List[str]] = defaultdict(list)
+    for key in components:
+        by_file[key.split("::")[0]].append(key)
+
+    resolved: List[str] = []
+    unresolved: List[str] = []
+    seen: set = set()
+
+    def _add(key: str) -> None:
+        if key not in seen:
+            seen.add(key)
+            resolved.append(key)
+
+    for leaf in leaf_nodes:
+        if leaf in components:
+            _add(leaf)
+            continue
+        matches = by_file.get(leaf.split("::")[0])
+        if matches:
+            for match in matches:
+                _add(match)
+        else:
+            unresolved.append(leaf)
+
+    return resolved, unresolved
+
+
 def format_potential_core_components(leaf_nodes: List[str], components: Dict[str, Node]) -> tuple[str, str]:
     """
     Format the potential core components into a string that can be used in the prompt.
     """
-    # Filter out any invalid leaf nodes that don't exist in components
-    valid_leaf_nodes = []
-    for leaf_node in leaf_nodes:
-        if leaf_node in components:
-            valid_leaf_nodes.append(leaf_node)
-        else:
-            logger.warning(f"Skipping invalid leaf node '{leaf_node}' - not found in components")
-    
+    # Reconcile LLM-proposed ids onto real component keys (recovers bare paths /
+    # fabricated symbols); only genuinely unmatched ids are dropped.
+    valid_leaf_nodes, unresolved = reconcile_leaf_nodes(leaf_nodes, components)
+    for leaf_node in unresolved:
+        logger.warning(f"Skipping invalid leaf node '{leaf_node}' - not found in components")
+
     #group leaf nodes by file
     leaf_nodes_by_file = defaultdict(list)
     for leaf_node in valid_leaf_nodes:
@@ -166,15 +211,15 @@ def cluster_modules(
 
     for module_name, module_info in module_tree.items():
         sub_leaf_nodes = module_info.get("components", [])
-        
-        # Filter sub_leaf_nodes to ensure they exist in components
-        valid_sub_leaf_nodes = []
-        for node in sub_leaf_nodes:
-            if node in components:
-                valid_sub_leaf_nodes.append(node)
-            else:
-                logger.warning(f"Skipping invalid sub leaf node '{node}' in module '{module_name}' - not found in components")
-        
+
+        # Reconcile LLM-proposed ids onto real component keys and write the
+        # corrected list back into the tree, so downstream documentation reads
+        # valid components instead of bare paths / fabricated symbols.
+        valid_sub_leaf_nodes, unresolved = reconcile_leaf_nodes(sub_leaf_nodes, components)
+        for node in unresolved:
+            logger.warning(f"Skipping invalid sub leaf node '{node}' in module '{module_name}' - not found in components")
+        module_info["components"] = valid_sub_leaf_nodes
+
         current_module_path.append(module_name)
         module_info["children"] = {}
         module_info["children"] = cluster_modules(
