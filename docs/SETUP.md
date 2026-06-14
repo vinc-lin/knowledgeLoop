@@ -79,11 +79,14 @@ freshness anchor used later.
 ## 5. Launch the `repo_memory` MCP server (consume)
 
 Installing the package registers a **`repo-memory`** console script
-(`repo_memory.server:main`) that runs the facade over **stdio**:
+(`repo_memory.server:main`); you can equivalently run **`python -m repo_memory`**.
+Either runs the facade over **stdio**:
 
 ```bash
 # run from the target repo (REPO_MEMORY_REPO_PATH defaults to the cwd)
 .venv/bin/repo-memory
+# equivalent:
+.venv/bin/python -m repo_memory
 ```
 
 Key environment variables (full list + CBM knobs in
