@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 import json
+from contextlib import AsyncExitStack
+from datetime import timedelta
 from typing import Any, Optional
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+DEFAULT_CBM_COMMAND = ["uvx", "codebase-memory-mcp"]
 
 
 class CBMUnavailable(RuntimeError):
@@ -40,3 +47,43 @@ def _first_text(result) -> Optional[str]:
 def backoff_delays(n: int, base: float = 0.5, cap: float = 8.0) -> list[float]:
     """Exponential backoff schedule: base, 2*base, 4*base, ... capped at `cap`."""
     return [min(cap, base * (2 ** i)) for i in range(n)]
+
+
+class CBMClient:
+    """Owns one long-lived CBM subprocess reached over stdio MCP."""
+
+    def __init__(self, command: Optional[list[str]] = None, *, call_timeout: float = 30.0):
+        cmd = command or DEFAULT_CBM_COMMAND
+        self._params = StdioServerParameters(command=cmd[0], args=list(cmd[1:]))
+        self._call_timeout = call_timeout
+        self._stack: Optional[AsyncExitStack] = None
+        self._session: Optional[ClientSession] = None
+
+    @property
+    def running(self) -> bool:
+        return self._session is not None
+
+    async def start(self) -> None:
+        stack = AsyncExitStack()
+        try:
+            read, write = await stack.enter_async_context(stdio_client(self._params))
+            session = await stack.enter_async_context(ClientSession(read, write))
+            await session.initialize()
+        except Exception as exc:  # spawn/handshake failure
+            await stack.aclose()
+            raise CBMUnavailable(f"CBM start failed: {exc}") from exc
+        self._stack, self._session = stack, session
+
+    async def call_tool(self, name: str, arguments: Optional[dict] = None) -> Any:
+        if self._session is None:
+            raise CBMUnavailable("CBM client not started")
+        result = await self._session.call_tool(
+            name, arguments or {},
+            read_timeout_seconds=timedelta(seconds=self._call_timeout),
+        )
+        return parse_tool_result(result)
+
+    async def aclose(self) -> None:
+        if self._stack is not None:
+            await self._stack.aclose()
+        self._stack = self._session = None
