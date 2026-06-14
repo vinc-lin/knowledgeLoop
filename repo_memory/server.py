@@ -10,12 +10,13 @@ from mcp.server.fastmcp import FastMCP
 
 from repo_memory.state import load_app_state
 from repo_memory.graph.client import CBMClient
-from repo_memory.tools import wiki_tools, bridge_tools, graph_tools
+from repo_memory.tools import wiki_tools, bridge_tools, graph_tools, hybrid_tools
 
 TOOL_NAMES = [
     "get_repo_overview", "list_modules", "search_wiki", "get_module_doc",
     "get_related_files",
     "search_code_graph", "trace_symbol", "get_code_snippet", "get_architecture",
+    "explain_with_sources", "assess_impact",
 ]
 
 
@@ -96,6 +97,20 @@ def build_app(*, wiki_dir: str, entity_map_path: str,
                           "hotspots) from CBM.")
     async def _arch() -> dict:
         return await graph_tools.get_architecture(state)
+
+    @app.tool(name="explain_with_sources",
+              description="Explain how something works with GRAPH-VERIFIED source evidence "
+                          "(wiki narrative + real files/symbols/snippets). Use for 'how does X "
+                          "work / why' questions that need proof, not just narrative.")
+    async def _explain(query: str) -> dict:
+        return await hybrid_tools.explain_with_sources(state, query)
+
+    @app.tool(name="assess_impact",
+              description="Assess the blast radius of current changes — FAIL-CLOSED and "
+                          "graph-verified (blocks if the graph isn't current). Use before "
+                          "modifying/refactoring or for 'what does this change affect' questions.")
+    async def _impact(base_branch: str = None) -> dict:
+        return await hybrid_tools.assess_impact(state, base_branch=base_branch)
 
     return app
 
