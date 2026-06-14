@@ -54,3 +54,12 @@ async def test_graph_schema_and_index_status():
     assert c.call_tool_with_restart.await_args.args == ("index_status", {})
     await forward.index_status(c, project="p")
     assert c.call_tool_with_restart.await_args.args == ("index_status", {"project": "p"})
+
+
+@pytest.mark.asyncio
+async def test_detect_changes_args():
+    c = _client({"changes": [], "impacted": []})
+    await forward.detect_changes(c, base_branch="main")
+    assert c.call_tool_with_restart.await_args.args == ("detect_changes", {"base_branch": "main"})
+    await forward.detect_changes(c)
+    assert c.call_tool_with_restart.await_args.args == ("detect_changes", {})

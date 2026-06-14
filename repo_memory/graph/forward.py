@@ -40,3 +40,8 @@ async def get_graph_schema(client) -> Any:
 
 async def index_status(client, *, project: Optional[str] = None) -> Any:
     return await client.call_tool_with_restart("index_status", _compact({"project": project}))
+
+
+async def detect_changes(client, *, base_branch: Optional[str] = None) -> Any:
+    return await client.call_tool_with_restart(
+        "detect_changes", _compact({"base_branch": base_branch}))
