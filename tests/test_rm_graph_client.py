@@ -64,3 +64,23 @@ def test_default_command_is_uvx_cbm():
     c = CBMClient()
     assert c._params.command == "uvx"
     assert c._params.args == ["codebase-memory-mcp"]
+
+
+@pytest.mark.asyncio
+async def test_restart_retries_then_succeeds(monkeypatch):
+    c = CBMClient()
+    c.call_tool = AsyncMock(side_effect=[CBMUnavailable("dropped"), {"ok": 1}])
+    c._restart = AsyncMock()
+    out = await c.call_tool_with_restart("search_graph", {"x": 1}, max_restarts=2)
+    assert out == {"ok": 1}
+    assert c._restart.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_restart_gives_up_after_max():
+    c = CBMClient()
+    c.call_tool = AsyncMock(side_effect=CBMUnavailable("dead"))
+    c._restart = AsyncMock()
+    with pytest.raises(CBMUnavailable):
+        await c.call_tool_with_restart("x", max_restarts=2)
+    assert c._restart.await_count == 2

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import AsyncExitStack
 from datetime import timedelta
@@ -82,6 +83,26 @@ class CBMClient:
             read_timeout_seconds=timedelta(seconds=self._call_timeout),
         )
         return parse_tool_result(result)
+
+    async def call_tool_with_restart(self, name: str, arguments: Optional[dict] = None,
+                                     *, max_restarts: int = 2) -> Any:
+        last: Optional[Exception] = None
+        for attempt in range(max_restarts + 1):
+            try:
+                return await self.call_tool(name, arguments)
+            except Exception as exc:
+                last = exc
+                if attempt < max_restarts:
+                    await self._restart(attempt)
+        raise CBMUnavailable(f"CBM call '{name}' failed after {max_restarts} restarts: {last}")
+
+    async def _restart(self, attempt: int) -> None:
+        await asyncio.sleep(backoff_delays(attempt + 1)[-1])
+        await self.aclose()
+        try:
+            await self.start()
+        except CBMUnavailable:
+            pass  # next attempt's call_tool will raise "not started"
 
     async def aclose(self) -> None:
         if self._stack is not None:
