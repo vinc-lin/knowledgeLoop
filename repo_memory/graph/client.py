@@ -53,9 +53,12 @@ def backoff_delays(n: int, base: float = 0.5, cap: float = 8.0) -> list[float]:
 class CBMClient:
     """Owns one long-lived CBM subprocess reached over stdio MCP."""
 
-    def __init__(self, command: Optional[list[str]] = None, *, call_timeout: float = 30.0):
+    def __init__(self, command: Optional[list[str]] = None, *, call_timeout: float = 30.0,
+                 env: Optional[dict] = None, cwd: Optional[str] = None):
         cmd = command or DEFAULT_CBM_COMMAND
-        self._params = StdioServerParameters(command=cmd[0], args=list(cmd[1:]))
+        # NOTE: the MCP SDK merges `env` over a clean get_default_environment(), NOT the parent
+        # env. Callers must include any non-CBM_* vars CBM needs (see repo_memory.deploy.PRESERVE_ENV).
+        self._params = StdioServerParameters(command=cmd[0], args=list(cmd[1:]), env=env, cwd=cwd)
         self._call_timeout = call_timeout
         self._stack: Optional[AsyncExitStack] = None
         self._session: Optional[ClientSession] = None
