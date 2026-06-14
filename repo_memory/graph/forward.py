@@ -42,6 +42,10 @@ async def index_status(client, *, project: Optional[str] = None) -> Any:
     return await client.call_tool_with_restart("index_status", _compact({"project": project}))
 
 
+async def index_repository(client, *, path: str) -> Any:
+    return await client.call_tool_with_restart("index_repository", {"path": path})
+
+
 async def detect_changes(client, *, base_branch: Optional[str] = None) -> Any:
     return await client.call_tool_with_restart(
         "detect_changes", _compact({"base_branch": base_branch}))
