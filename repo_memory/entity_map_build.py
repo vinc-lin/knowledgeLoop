@@ -18,14 +18,15 @@ def _module_files(node: dict) -> list[str]:
     return sorted(files)
 
 
-async def build_and_save(wiki, client, out_path: str, *,
+async def build_and_save(wiki, client, out_path: str, *, project: str,
                          repo_root: Optional[str] = None,
                          repo_head: Optional[str] = None) -> EntityMap:
     # Collect the union of files referenced across all modules, enumerate once.
     all_files = set()
     for _name, node in _walk(wiki.module_tree):
         all_files.update(_module_files(node))
-    nodes: list[NodeRecord] = await enumerate_nodes_for_files(client, sorted(all_files))
+    nodes: list[NodeRecord] = await enumerate_nodes_for_files(
+        client, sorted(all_files), project=project)
     em = build_entity_map(wiki.module_tree, nodes, repo_root=repo_root,
                           repo_head=repo_head, wiki_commit=wiki.wiki_commit,
                           graph_commit=repo_head)   # graph was just enumerated at repo_head

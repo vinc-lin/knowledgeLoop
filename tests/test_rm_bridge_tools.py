@@ -1,6 +1,7 @@
 """get_related_files reads the precomputed entity_map and verifies on access."""
 
 import pytest
+from unittest.mock import AsyncMock
 
 from repo_memory.state import AppState
 from repo_memory.bridge.schema import EntityMap, ModuleMap, EntityEntry, NodeRecord
@@ -69,3 +70,12 @@ async def test_module_not_in_entity_map():
     e = await bridge_tools.get_related_files(_state(_em()), "nope", probe=FakeProbe({}))
     assert e["result"] is None
     assert any("not in entity_map" in w for w in e["warnings"])
+
+
+@pytest.mark.asyncio
+async def test_serves_unverified_when_repo_not_indexed(monkeypatch):
+    # cbm present but project unresolvable (repo not indexed) -> serve unverified, warn
+    monkeypatch.setattr(bridge_tools, "ensure_project", AsyncMock(return_value=None))
+    e = await bridge_tools.get_related_files(_state(_em()), "mod")  # no probe injected
+    assert e["result"]["files"] == ["p/m.py"]
+    assert any("not indexed" in w for w in e["warnings"])

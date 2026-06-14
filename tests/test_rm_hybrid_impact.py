@@ -16,7 +16,7 @@ def _em(graph_commit="r", with_file=None):
 
 
 def _state(*, cbm=True, graph_commit="r", with_file=None):
-    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r",
+    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r", project="p",
                     cbm=(object() if cbm else None), entity_map=_em(graph_commit, with_file))
 
 
@@ -63,7 +63,7 @@ async def test_blocks_when_detect_changes_error_shape(monkeypatch):
 async def test_blocks_when_symbol_unverifiable(monkeypatch):
     monkeypatch.setattr(H.forward, "detect_changes", AsyncMock(return_value={
         "changes": ["a.py"], "impacted": [{"qualified_name": "m.Gone", "risk": "high"}]}))
-    monkeypatch.setattr(H, "CBMGraphProbe", lambda cbm: _Probe({}))  # nothing verifiable
+    monkeypatch.setattr(H, "CBMGraphProbe", lambda cbm, project=None: _Probe({}))  # nothing verifiable
     e = await H.assess_impact(_state())
     assert e["result"] is None and any("not verifiable" in w for w in e["warnings"])
 
@@ -76,7 +76,7 @@ async def test_happy_path_with_and_without_module(monkeypatch):
                      {"qualified_name": "m.Other", "risk": "low"}]}))
     nodes = {"m.Sym": NodeRecord("m.Sym", "Sym", "m.Sym", "src/p.py", 1, 9),
              "m.Other": NodeRecord("m.Other", "Other", "m.Other", "src/x.py", 1, 4)}
-    monkeypatch.setattr(H, "CBMGraphProbe", lambda cbm: _Probe(nodes))
+    monkeypatch.setattr(H, "CBMGraphProbe", lambda cbm, project=None: _Probe(nodes))
     e = await H.assess_impact(_state(with_file="src/p.py"))
     assert e["freshness"] == "fresh"
     imp = {i["symbol"]: i for i in e["result"]["impacted"]}

@@ -8,6 +8,7 @@ from typing import Optional
 from repo_memory.contract import envelope
 from repo_memory.bridge.verify import verify_entries
 from repo_memory.graph.nodes import CBMGraphProbe
+from repo_memory.graph.project import ensure_project
 from repo_memory.grounding import compute_freshness
 from repo_memory.tools.wiki_tools import provenance
 
@@ -29,17 +30,20 @@ async def get_related_files(state, module: str, *, probe=None) -> dict:
                         provenance=provenance(state))
 
     if probe is None:
-        if state.cbm is None:
-            # No graph to verify against: serve unverified, warn.
+        project = await ensure_project(state) if state.cbm is not None else None
+        if project is None:
+            # No usable graph to verify against: serve unverified, warn.
+            reason = ("CBM unavailable" if state.cbm is None
+                      else "repo not indexed in CBM (run refresh_index)")
             files = sorted({e.file for e in mod.entries})
             return envelope(
                 {"module": module, "files": files,
                  "entries": [asdict(e) for e in mod.entries]},
                 freshness=compute_freshness(state),
-                warnings=["CBM unavailable; entries not verified"],
+                warnings=[f"{reason}; entries not verified"],
                 confidence=_avg_conf(mod.entries), unmatched=[asdict(u) for u in mod.unmatched],
                 provenance=provenance(state))
-        probe = CBMGraphProbe(state.cbm)
+        probe = CBMGraphProbe(state.cbm, project=project)
 
     qns = [e.cbm_node_id for e in mod.entries if e.cbm_node_id]
     await probe.prefetch(qns)

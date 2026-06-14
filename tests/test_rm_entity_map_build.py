@@ -20,7 +20,7 @@ async def test_build_and_save_grounds_known_symbol(tmp_path):
         {"name": "Pipeline", "qualified_name": "src.ingest.Pipeline",
          "file_path": "src/ingest/pipeline.py", "start_line": 1, "end_line": 20}]})
     out = tmp_path / "entity_map.json"
-    em = await build_and_save(wiki, client, str(out), repo_head="rsha")
+    em = await build_and_save(wiki, client, str(out), project="proj", repo_head="rsha")
     assert out.exists()
     saved = load_entity_map(str(out))
     assert saved.built_at_repo_head == "rsha"

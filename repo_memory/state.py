@@ -15,6 +15,7 @@ class AppState:
     entity_map_path: str
     repo_head: Optional[str] = None
     repo_path: Optional[str] = None       # source repo to re-index (refresh)
+    project: Optional[str] = None         # CBM project id (resolved from CBM, cached)
     cbm: Optional[object] = None          # CBMClient | None (set by server lifespan)
     wiki: Optional[WikiData] = None
     entity_map: Optional[EntityMap] = None
@@ -22,7 +23,7 @@ class AppState:
 
 def load_app_state(*, wiki_dir: str, entity_map_path: str,
                    repo_head: Optional[str] = None, repo_path: Optional[str] = None,
-                   cbm=None) -> AppState:
+                   project: Optional[str] = None, cbm=None) -> AppState:
     """Load wiki + entity_map from disk; missing/unreadable artifacts degrade to None."""
     try:
         wiki = load_wiki(wiki_dir)
@@ -33,5 +34,5 @@ def load_app_state(*, wiki_dir: str, entity_map_path: str,
     except Exception:
         entity_map = None
     return AppState(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
-                    repo_head=repo_head, repo_path=repo_path, cbm=cbm,
+                    repo_head=repo_head, repo_path=repo_path, project=project, cbm=cbm,
                     wiki=wiki, entity_map=entity_map)

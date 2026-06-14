@@ -26,14 +26,14 @@ def _rows(resp) -> list:
     return resp.get("results", []) if isinstance(resp, dict) else []
 
 
-async def enumerate_nodes_for_files(client, files: list[str], *,
+async def enumerate_nodes_for_files(client, files: list[str], *, project: str,
                                     page_size: int = 200) -> list[NodeRecord]:
     """Fetch all graph nodes located in the given files, deduped by qualified_name."""
     seen: dict[str, NodeRecord] = {}
     for path in files:
         offset = 0
         while True:
-            resp = await forward.search_graph(client, file_pattern=path,
+            resp = await forward.search_graph(client, project=project, file_pattern=path,
                                               limit=page_size, offset=offset)
             rows = _rows(resp)
             for row in rows:
@@ -49,8 +49,9 @@ async def enumerate_nodes_for_files(client, files: list[str], *,
 class CBMGraphProbe:
     """Synchronous M1 GraphProbe backed by a prefetched CBM cache."""
 
-    def __init__(self, client):
+    def __init__(self, client, *, project: str):
         self._client = client
+        self._project = project
         self._cache: dict[str, NodeRecord] = {}
 
     async def prefetch(self, qns: Iterable[str]) -> None:
@@ -66,7 +67,8 @@ class CBMGraphProbe:
 
     async def _lookup_remote(self, qn: str) -> Optional[NodeRecord]:
         short = qn.rsplit(".", 1)[-1]
-        resp = await forward.search_graph(self._client, name_pattern=f"^{re.escape(short)}$")
+        resp = await forward.search_graph(self._client, project=self._project,
+                                          name_pattern=f"^{re.escape(short)}$")
         for row in _rows(resp):
             if (row.get("qualified_name") or row.get("name")) == qn:
                 return row_to_node(row)

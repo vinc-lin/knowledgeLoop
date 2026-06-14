@@ -30,9 +30,9 @@ async def test_cbm_roundtrip_and_enumeration():
         pytest.skip(f"CBM unavailable: {exc}")
     try:
         # index this repo, then enumerate nodes for a known codewiki file
-        await client.call_tool("index_repository", {"path": REPO_ROOT})
+        idx = await client.call_tool("index_repository", {"repo_path": REPO_ROOT})
         nodes = await enumerate_nodes_for_files(
-            client, ["codewiki/cli/models/config.py"])
+            client, ["codewiki/cli/models/config.py"], project=idx["project"])
         names = {n.name for n in nodes}
         assert "Configuration" in names  # known codewiki class is grounded
     finally:

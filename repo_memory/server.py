@@ -25,11 +25,12 @@ TOOL_NAMES = [
 
 def build_app(*, wiki_dir: str, entity_map_path: str,
               repo_head: Optional[str] = None, repo_path: Optional[str] = None,
+              cbm_project: Optional[str] = None,
               cbm_command: Optional[list] = None,
               cbm_env: Optional[dict] = None,
               cbm_cwd: Optional[str] = None) -> FastMCP:
     state = load_app_state(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
-                           repo_head=repo_head, repo_path=repo_path)
+                           repo_head=repo_head, repo_path=repo_path, project=cbm_project)
 
     @asynccontextmanager
     async def lifespan(_app):
@@ -131,8 +132,9 @@ def main() -> None:
     wiki_dir = os.environ.get("REPO_MEMORY_WIKI_DIR", "docs")
     entity_map_path = os.environ.get("REPO_MEMORY_ENTITY_MAP", "entity_map.json")
     repo_path = os.environ.get("REPO_MEMORY_REPO_PATH", os.getcwd())
+    project = os.environ.get("REPO_MEMORY_CBM_PROJECT")  # optional override; else auto-resolved
     spec = resolve_launch_spec(environ=os.environ)
     build_app(wiki_dir=wiki_dir, entity_map_path=entity_map_path,
-              repo_path=repo_path,
+              repo_path=repo_path, cbm_project=project,
               cbm_command=spec.command, cbm_env=spec.env,
               cbm_cwd=spec.cwd).run(transport="stdio")

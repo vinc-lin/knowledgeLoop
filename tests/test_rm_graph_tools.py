@@ -9,7 +9,7 @@ from repo_memory.tools import graph_tools
 
 
 def _state(cbm):
-    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r", cbm=cbm)
+    return AppState(wiki_dir="w", entity_map_path="e", repo_head="r", project="p", cbm=cbm)
 
 
 @pytest.mark.asyncio

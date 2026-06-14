@@ -23,7 +23,8 @@ async def test_refresh_reindexes_rebuilds_and_freshens(monkeypatch, tmp_path):
     st.entity_map_path = str(tmp_path / "entity_map.json")
     em = EntityMap("r", "r", "r", [])
     monkeypatch.setattr(R, "build_and_save", AsyncMock(return_value=em))
-    monkeypatch.setattr(R.forward, "index_repository", AsyncMock(return_value={"indexed": True}))
+    monkeypatch.setattr(R.forward, "index_repository",
+                        AsyncMock(return_value={"indexed": True, "project": "proj"}))
     e = await R.refresh(st)
     R.forward.index_repository.assert_awaited_once()
     assert e["result"]["reindexed"] is True

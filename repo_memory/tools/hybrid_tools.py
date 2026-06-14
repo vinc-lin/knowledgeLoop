@@ -10,6 +10,7 @@ from repo_memory.tools.wiki_tools import provenance, search_wiki, _find_module
 from repo_memory.tools import bridge_tools, graph_tools
 from repo_memory.grounding import require_fresh, compute_freshness
 from repo_memory.graph.nodes import CBMGraphProbe
+from repo_memory.graph.project import ensure_project
 from repo_memory.graph import forward
 from repo_memory.graph.client import CBMUnavailable
 
@@ -101,8 +102,11 @@ async def assess_impact(state, base_branch: Optional[str] = None) -> dict:
     blocked = require_fresh(state)
     if blocked is not None:
         return _blocked(f"graph is {blocked}", freshness=blocked)
+    project = await ensure_project(state)
+    if project is None:
+        return _blocked("repo not indexed in CBM (run refresh_index)")
     try:
-        changes = await forward.detect_changes(state.cbm, base_branch=base_branch)
+        changes = await forward.detect_changes(state.cbm, project=project, base_branch=base_branch)
     except CBMUnavailable as exc:
         return _blocked(str(exc))
     if not isinstance(changes, dict) or changes.get("error"):
@@ -111,7 +115,7 @@ async def assess_impact(state, base_branch: Optional[str] = None) -> dict:
         return _blocked(reason)
 
     impacted_in = changes.get("impacted") or []
-    probe = CBMGraphProbe(state.cbm)
+    probe = CBMGraphProbe(state.cbm, project=project)
     qns = [i.get("qualified_name") or i.get("name") for i in impacted_in
            if (i.get("qualified_name") or i.get("name"))]
     await probe.prefetch(qns)
