@@ -8,7 +8,7 @@ from typing import Optional
 from repo_memory.contract import envelope
 from repo_memory.tools.wiki_tools import provenance, search_wiki, _find_module
 from repo_memory.tools import bridge_tools, graph_tools
-from repo_memory.grounding import graph_is_current
+from repo_memory.grounding import require_fresh, compute_freshness
 from repo_memory.graph.nodes import CBMGraphProbe
 from repo_memory.graph import forward
 from repo_memory.graph.client import CBMUnavailable
@@ -29,7 +29,14 @@ async def _snippet(state, qn: str) -> str:
     return out if isinstance(out, str) else ("" if out is None else str(out))
 
 
-async def explain_with_sources(state, query: str, *, n: int = N_EVIDENCE) -> dict:
+async def explain_with_sources(state, query: str, *, n: int = N_EVIDENCE,
+                               require_verification: bool = False) -> dict:
+    if require_verification:
+        blocked = require_fresh(state)
+        if blocked is not None:
+            return envelope(None, freshness=blocked,
+                            warnings=[f"verification required but graph is {blocked} "
+                                      f"(run refresh_index)"], provenance=provenance(state))
     warnings: list = []
     narrative, module = "", None
 
@@ -67,7 +74,7 @@ async def explain_with_sources(state, query: str, *, n: int = N_EVIDENCE) -> dic
                 "confidence": 0.85, "stale": False})
 
     conf = round(sum(e["confidence"] for e in evidence) / len(evidence), 3) if evidence else None
-    fresh = "fresh" if evidence and not any(e["stale"] for e in evidence) else "unverified"
+    fresh = compute_freshness(state, entries_stale=any(e["stale"] for e in evidence))
     return envelope({"narrative": narrative, "module": module, "evidence": evidence},
                     freshness=fresh, confidence=conf, warnings=warnings,
                     unmatched=unmatched, provenance=provenance(state))
@@ -91,10 +98,9 @@ async def assess_impact(state, base_branch: Optional[str] = None) -> dict:
                         provenance=prov)
 
     # --- fail-closed gate (graph-grounding only) ---
-    if state.cbm is None:
-        return _blocked("CBM unavailable", freshness="unverified")
-    if not graph_is_current(state):
-        return _blocked("graph not current (re-index first)")
+    blocked = require_fresh(state)
+    if blocked is not None:
+        return _blocked(f"graph is {blocked}", freshness=blocked)
     try:
         changes = await forward.detect_changes(state.cbm, base_branch=base_branch)
     except CBMUnavailable as exc:

@@ -85,3 +85,12 @@ async def test_degrades_when_cbm_down_but_wiki_present():
     assert e["result"]["evidence"]                       # entity-map evidence still served
     assert e["result"]["evidence"][0]["snippet"] == ""   # no live snippet (CBM down)
     assert any("CBM" in w for w in e["warnings"])         # degradation warning surfaced
+
+
+@pytest.mark.asyncio
+async def test_explain_require_verification_blocks_when_stale():
+    # cbm present, no entity_map -> graph not current -> require_verification blocks
+    st = AppState(wiki_dir="w", entity_map_path="e", repo_head="r", cbm=object(), wiki=_wiki())
+    e = await H.explain_with_sources(st, "Ingestion", require_verification=True)
+    assert e["result"] is None
+    assert any("verification required" in w for w in e["warnings"])

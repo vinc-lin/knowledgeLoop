@@ -34,13 +34,13 @@ class _Probe:
 def test_blocks_when_cbm_none():
     import asyncio
     e = asyncio.run(H.assess_impact(_state(cbm=False)))
-    assert e["result"] is None and any("CBM" in w for w in e["warnings"])
+    assert e["result"] is None and any("unverified" in w for w in e["warnings"])
 
 
 def test_blocks_when_graph_stale():
     import asyncio
     e = asyncio.run(H.assess_impact(_state(graph_commit="OLD")))
-    assert e["result"] is None and any("not current" in w for w in e["warnings"])
+    assert e["result"] is None and any("stale-graph" in w for w in e["warnings"])
 
 
 @pytest.mark.asyncio
