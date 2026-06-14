@@ -8,6 +8,10 @@ from typing import Optional
 from repo_memory.contract import envelope
 from repo_memory.tools.wiki_tools import provenance, search_wiki, _find_module
 from repo_memory.tools import bridge_tools, graph_tools
+from repo_memory.grounding import graph_is_current
+from repo_memory.graph.nodes import CBMGraphProbe
+from repo_memory.graph import forward
+from repo_memory.graph.client import CBMUnavailable
 
 N_EVIDENCE = 3
 
@@ -67,3 +71,59 @@ async def explain_with_sources(state, query: str, *, n: int = N_EVIDENCE) -> dic
     return envelope({"narrative": narrative, "module": module, "evidence": evidence},
                     freshness=fresh, confidence=conf, warnings=warnings,
                     unmatched=unmatched, provenance=provenance(state))
+
+
+def _module_for_file(state, file_path: str) -> Optional[str]:
+    em = state.entity_map
+    if not em:
+        return None
+    for m in em.modules:
+        if any(e.file == file_path for e in m.entries):
+            return m.module
+    return None
+
+
+async def assess_impact(state, base_branch: Optional[str] = None) -> dict:
+    prov = provenance(state)
+
+    def _blocked(reason, freshness="stale-graph"):
+        return envelope(None, freshness=freshness, warnings=[f"cannot assess impact: {reason}"],
+                        provenance=prov)
+
+    # --- fail-closed gate (graph-grounding only) ---
+    if state.cbm is None:
+        return _blocked("CBM unavailable", freshness="unverified")
+    if not graph_is_current(state):
+        return _blocked("graph not current (re-index first)")
+    try:
+        changes = await forward.detect_changes(state.cbm, base_branch=base_branch)
+    except CBMUnavailable as exc:
+        return _blocked(str(exc))
+    if not isinstance(changes, dict) or changes.get("error"):
+        reason = (changes or {}).get("error", "detect_changes returned no usable result") \
+            if isinstance(changes, dict) else "detect_changes returned no usable result"
+        return _blocked(reason)
+
+    impacted_in = changes.get("impacted") or []
+    probe = CBMGraphProbe(state.cbm)
+    qns = [i.get("qualified_name") or i.get("name") for i in impacted_in
+           if (i.get("qualified_name") or i.get("name"))]
+    await probe.prefetch(qns)
+
+    impacted_out, no_module = [], []
+    for item in impacted_in:
+        qn = item.get("qualified_name") or item.get("name")
+        node = probe.lookup(qn) if qn else None
+        if node is None:
+            return _blocked(f"symbol '{qn}' not verifiable in current graph")
+        module = _module_for_file(state, node.file_path)
+        if module is None:
+            no_module.append(node.name)
+        impacted_out.append({"symbol": node.name, "file": node.file_path,
+                             "risk": item.get("risk"), "module": module, "verified": True})
+
+    warnings = [f"{len(no_module)} impacted symbol(s) have no wiki module mapping"] if no_module else []
+    return envelope({"base_branch": base_branch, "changes": changes.get("changes") or [],
+                     "impacted": impacted_out, "blast_radius": len(impacted_out)},
+                    freshness="fresh", confidence=(1.0 if impacted_out else None),
+                    warnings=warnings, provenance=prov)
