@@ -27,6 +27,7 @@ async def build_and_save(wiki, client, out_path: str, *,
         all_files.update(_module_files(node))
     nodes: list[NodeRecord] = await enumerate_nodes_for_files(client, sorted(all_files))
     em = build_entity_map(wiki.module_tree, nodes, repo_root=repo_root,
-                          repo_head=repo_head, wiki_commit=wiki.wiki_commit)
+                          repo_head=repo_head, wiki_commit=wiki.wiki_commit,
+                          graph_commit=repo_head)   # graph was just enumerated at repo_head
     save_entity_map(em, out_path)
     return em

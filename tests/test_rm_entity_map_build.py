@@ -25,6 +25,7 @@ async def test_build_and_save_grounds_known_symbol(tmp_path):
     saved = load_entity_map(str(out))
     assert saved.built_at_repo_head == "rsha"
     assert saved.wiki_commit == "wsha"
+    assert saved.graph_commit == "rsha"   # recorded = repo_head (M4 fix)
     entry = saved.modules[0].entries[0]
     assert entry.match_strategy in ("exact", "qualified_suffix")
     assert entry.cbm_node_id == "src.ingest.Pipeline"
