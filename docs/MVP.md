@@ -76,15 +76,23 @@ Produces `./wiki-docs/*.md`, `module_tree.json`, `first_module_tree.json`, `meta
 `entity_map.json` with `graph_commit = repo_head`. It takes the resolved CBM `project` and
 is also re-invoked at runtime by `refresh_index`.
 
-**(c) Launch the `repo_memory` MCP server** (stdio). `main()` reads four env vars, then
-`resolve_launch_spec(os.environ)` computes how CBM is spawned:
+**(c) Launch the `repo_memory` MCP server** (stdio). `main()` reads the env vars below and
+resolves the freshness anchor `repo_head`, then `resolve_launch_spec(os.environ)` computes
+how CBM is spawned:
 
 | Env var (read in `server.py main()`) | Default | Purpose |
 |---|---|---|
 | `REPO_MEMORY_WIKI_DIR` | `wiki-docs` | CodeWiki bundle dir |
 | `REPO_MEMORY_ENTITY_MAP` | `entity_map.json` | bridge artifact path |
-| `REPO_MEMORY_REPO_PATH` | `os.getcwd()` | repo root (used by `refresh_index`) |
+| `REPO_MEMORY_REPO_PATH` | `os.getcwd()` | repo root (CBM index target; used by `refresh_index`) |
+| `REPO_MEMORY_REPO_HEAD` | `git rev-parse HEAD` of `REPO_MEMORY_REPO_PATH` | freshness anchor `repo_head`; set explicitly for detached / non-git checkouts |
 | `REPO_MEMORY_CBM_PROJECT` | unset | optional CBM project override; else auto-resolved from CBM |
+
+`main()` resolves `repo_head` via `_resolve_repo_head()` — `REPO_MEMORY_REPO_HEAD` if set,
+else `git rev-parse HEAD` of `REPO_MEMORY_REPO_PATH`, else `None`. This is what lets the
+standalone launch (`python -m repo_memory` / the `repo-memory` console script) report
+`fresh` and pass the fail-closed gate (§4); previously `repo_head` was never set outside of
+tests, so freshness was stuck at `unverified` and `assess_impact` always blocked.
 
 CBM is spawned as one long-lived stdio subprocess. The deploy profile and CBM knobs
 (consumed by `deploy.resolve_launch_spec`):
@@ -148,7 +156,7 @@ Every tool returns `envelope(...)`:
   A stale wiki **never blocks** a read.
 - **Fail-closed (Tier B).** `require_fresh(state)` returns a blocking freshness string
   unless `graph_is_current(state)` — True **only if** `cbm is not None` **and** `repo_head`
-  is set **and** `entity_map.graph_commit == repo_head`. Among the 12 exposed tools,
+  is set (resolved at launch, §3(c)) **and** `entity_map.graph_commit == repo_head`. Among the 12 exposed tools,
   **only `assess_impact` is fail-closed** — it always gates on `require_fresh` (and further
   checks `ensure_project`, `detect_changes`, and per-symbol verifiability, returning a blocked
   envelope if any impacted symbol is not verifiable). The `explain_with_sources` *function*
@@ -169,20 +177,23 @@ Every tool returns `envelope(...)`:
 
 ## 5. What's proven
 
-- **202 offline tests pass.** Run:
+- **206 offline tests pass** (+4 from `test_rm_server_repo_head.py`, the `repo_head` fix). Run:
   ```bash
   .venv/bin/python -m pytest tests/ -p no:cacheprovider -m "not integration" --no-cov -s
   ```
   Note: pass **`-s`** — without disabling capture this suite tears down with
   `ValueError: I/O operation on closed file.` (a capture-finalizer crash, not a test
   failure). `--no-cov` is needed only if `pytest-cov` is absent (pyproject sets `--cov`).
-  Count: `collected 206 / 4 deselected / 202 selected`, exit code 0 (verify with
-  `grep -c PASSED`). With `-s`, pytest's `===== 202 passed =====` summary line is suppressed,
+  Count: `collected 210 / 4 deselected / 206 selected`, exit code 0 (verify with
+  `grep -c PASSED`). With `-s`, pytest's `===== 206 passed =====` summary line is suppressed,
   so the run ends on the last `PASSED` line — the pass count is real even though the summary
   banner is absent.
 - **Validated end-to-end against real CBM 0.8.1** — `search_code_graph`,
   `get_architecture`, `trace_symbol`, `get_code_snippet` return real results once the
   `project` is threaded through every forward call.
+- **Freshness reaches `fresh` end-to-end.** With `repo_head` resolved at launch (§3(c)),
+  the standalone server's graph/hybrid tools report `freshness=fresh` and `assess_impact`
+  returns a result against a pinned git checkout — not only in tests that inject `repo_head`.
 - **Lint clean.** `.venv/bin/ruff check repo_memory/` → "All checks passed!".
   (`mypy repo_memory/` still surfaces residual notes under the permissive config — 27 errors
   total, 22 of them `no-any-return` from MCP-SDK forwards, the rest implicit-Optional defaults;
