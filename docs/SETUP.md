@@ -120,6 +120,9 @@ Register it in an MCP client (use **absolute** paths):
 > `python -m codewiki.mcp.server` (tools: `generate_docs`, `analyze_repo`,
 > `get_module_tree`). `repo_memory` is the consume side.
 
+> For the **Claude Code**-specific registration (`claude mcp add`), permission
+> allow-listing, and natural-language usage, see **§7 (Use it in Claude Code)**.
+
 ## 6. Bootstrap the graph + bridge (first run)
 
 On a fresh setup `entity_map.json` doesn't exist yet and the repo isn't indexed in
@@ -131,7 +134,77 @@ graph/hybrid tools and freshness gates work.
 > Manual/offline alternative: the offline join `build_and_save` in
 > `repo_memory/entity_map_build.py` (see [`docs/MVP.md`](MVP.md) §3(b)).
 
-## 7. Verify
+## 7. Use it in Claude Code
+
+Register the server once, then query the repo in natural language. Use **absolute
+paths** (env values resolve from the server's own CWD, not from the target repo).
+
+```bash
+claude mcp add repo-memory --scope user \
+  -e REPO_MEMORY_REPO_PATH=/abs/target/repo \
+  -e REPO_MEMORY_WIKI_DIR=/abs/target/repo/wiki-docs \
+  -e REPO_MEMORY_ENTITY_MAP=/abs/target/repo/entity_map.json \
+  -e CBM_CACHE_DIR=$HOME/cbm-cache \
+  -- /abs/.venv/bin/python -m repo_memory
+```
+
+- `--scope user` makes it available in every project; use `--scope local`/`project`
+  to limit it. The server name (`repo-memory`) is your choice. The generic
+  `mcpServers` JSON in §5 is the equivalent for any MCP client (Claude Desktop, IDEs).
+- **Restart the Claude Code session** — a running session does *not* pick up a
+  newly added server. Then run **`/mcp`** to confirm `repo-memory` is *connected*
+  (the panel shows status + a tool count, not a clickable tool list).
+
+**Query it** by asking in natural language — tools are auto-routed (you can't
+slash- or @-invoke them). Name the server to nudge routing:
+
+| Ask | Routes to |
+|---|---|
+| "Use repo-memory for an architecture overview" | `get_repo_overview` / `get_architecture` |
+| "Which real files implement the `<X>` module?" | `get_related_files` (wiki→code bridge) |
+| "Trace the callers of `<fn>` and show its source" | `trace_symbol` → `get_code_snippet` |
+| "What's the blast radius of my current changes?" | `assess_impact` (fail-closed) |
+| "A tool said stale-graph — re-index it" | `refresh_index` |
+
+**Skip the per-call approval prompt** — these are read-only query tools, so
+allow-list the whole server in `~/.claude/settings.json` (or project
+`.claude/settings.json`):
+
+```json
+{ "permissions": { "allow": ["mcp__repo-memory__*"] } }
+```
+
+(Single tool: `mcp__repo-memory__get_repo_overview`; globs work *after* the literal
+`mcp__repo-memory__` prefix. Stdio servers don't auto-reconnect — restart the
+session if one dies, or after any config change.)
+
+> One server = one target repo (bound by its env). Register a second server under a
+> different name (e.g. `repo-memory-foo`) to query another repo.
+
+## 8. Test it against a read-only corpus
+
+To exercise the MVP on a shared / read-only repo (e.g. a pinned `~/code/corpora`
+tree) without polluting it:
+
+- **Keep the corpus read-only.** Generate the wiki bundle and `entity_map.json` into
+  an **external** scratch dir — `codewiki generate --output /abs/scratch/<repo>`
+  with an **absolute** path (a relative `--output` lands inside the read-only tree).
+  CBM only *reads* `REPO_MEMORY_REPO_PATH`; all writes go to the scratch paths.
+- **Put `CBM_CACHE_DIR` on a local filesystem.** CBM writes a SQLite/WAL DB — keep it
+  off network/9p (v9fs) mounts (e.g. under `$HOME`), or indexing can fail.
+- **Freshness reaches `fresh`** when the corpus is a real git repo: the server
+  derives `repo_head` via `git rev-parse HEAD` of `REPO_MEMORY_REPO_PATH` (override
+  with `REPO_MEMORY_REPO_HEAD`), and `refresh_index` writes `graph_commit = HEAD`.
+- **Confirm the corpus stayed clean:** on a 9p/v9fs mount `git status` reports every
+  file as modified (filemode bits only) — use `git -c core.fileMode=false status` to
+  see real content changes.
+
+A repeatable produce→bridge→consume smoke harness lives at
+[`scripts/ndk_mvp_smoke.py`](../scripts/ndk_mvp_smoke.py): point it at any repo via
+the same env vars and it loads the wiki, starts CBM, runs `refresh_index`, then
+drives the wiki/graph/hybrid tools, printing each envelope's freshness + provenance.
+
+## 9. Verify
 
 - Wiki tools (no CBM needed): `get_repo_overview`, `list_modules`.
 - Graph tools (after `refresh_index`): `get_architecture`, `search_code_graph`.
@@ -140,15 +213,16 @@ graph/hybrid tools and freshness gates work.
   .venv/bin/python -m pytest tests/ -p no:cacheprovider -m "not integration" --no-cov -s
   ```
 
-## 8. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
+| `repo-memory` not visible after `claude mcp add` | A running session doesn't load new servers — **restart the Claude Code session**, then `/mcp`. |
 | Graph tools return `repo not indexed in CBM (run refresh_index)` | Expected on first run — call `refresh_index`. |
 | Everything degrades to wiki-only | CBM didn't spawn. Check `uv`/`uvx` on `PATH`, network access, and that `0.8.1` resolves (`uvx codebase-memory-mcp@0.8.1 --help`). |
 | CBM spawns but can't find its cache/config | The MCP SDK merges child env over a **clean** environment; `deploy.PRESERVE_ENV` re-injects `HOME/PATH/…`. If you build env yourself, include them — see [`docs/repo_memory-deploy.md`](repo_memory-deploy.md). |
 | Need a different CBM build | Set `REPO_MEMORY_CBM_VERSION`, or override the whole command with `REPO_MEMORY_CBM_COMMAND`. |
-| Freshness stuck at `unverified` | No `repo_head` match — `metadata.generation_info.commit_id` is null (regenerate the wiki in a git repo so HEAD is captured). |
+| Freshness stuck at `unverified` | No `repo_head`: `REPO_MEMORY_REPO_PATH` isn't a git repo (set `REPO_MEMORY_REPO_HEAD`), CBM didn't spawn, or `entity_map.graph_commit` is null — run `refresh_index`. |
 
 ## Pointers
 
