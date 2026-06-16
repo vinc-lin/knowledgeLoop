@@ -58,6 +58,22 @@ languages, builds their knowledge, and answers grounded, source-backed questions
 them through a single interface. The next step — agents that write their learnings back —
 turns that foundation into a flywheel.
 
+## Modules & development stage
+
+KnowledgeLoop ships as four stages. Three run end-to-end today; the fourth — the part that
+makes it a *loop* — is the roadmap.
+
+| Stage | Module / capability | What it does | Stage |
+|---|---|---|---|
+| **Produce** | CodeWiki engine | Parses a repo (8 languages) and generates an architecture-aware Markdown + Mermaid wiki | ✅ Built |
+| **Bridge** | Wiki↔Graph entity map | Joins the narrative docs to a verifiable code graph, so every claim resolves to real code | ✅ Built |
+| **Consume** | `repo_memory` MCP facade | One interface, 12 tools — overview, search, call-tracing, grounded explanations, impact analysis | ✅ Built |
+| **Consume** | Freshness & fail-closed grounding | Tags every answer fresh / stale and refuses to answer rather than guess when the graph is out of date | ✅ Built |
+| **Feed back** | Execution-results loop | Agents write outcomes back into the knowledge base, so it compounds with use | 🟡 Roadmap |
+
+*Validated end-to-end against real open-source codebases — grounded answers at `fresh`
+provenance, with the read-only source untouched.*
+
 ---
 
 > Software's hardest bottleneck is no longer writing code; it's *understanding* it.
