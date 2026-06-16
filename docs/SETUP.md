@@ -201,7 +201,8 @@ tree) without polluting it:
 
 A repeatable produce→bridge→consume smoke harness lives at
 [`scripts/ndk_mvp_smoke.py`](../scripts/ndk_mvp_smoke.py): point it at any repo via
-the same env vars and it loads the wiki, starts CBM, runs `refresh_index`, then
+the same env vars and it loads the wiki, starts CBM, runs `refresh_index` (or
+`--skip-refresh` to reuse an already-current entity_map without re-indexing), then
 drives the wiki/graph/hybrid tools, printing each envelope's freshness + provenance.
 
 ## 9. Verify

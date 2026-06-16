@@ -20,10 +20,12 @@ Override any path/profile via env (same vars the server reads):
   CBM_CACHE_DIR           CBM SQLite cache (LOCAL fs!)  (default: ~/cbm-cache/<repo>)
 
 Usage:  /home/vinc/code/knowledgeLoop/.venv/bin/python scripts/ndk_mvp_smoke.py
+        # add --skip-refresh to consume an already-current entity_map without re-indexing
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import os
@@ -87,7 +89,7 @@ async def call(label: str, coro):
         return None
 
 
-async def main() -> int:
+async def main(skip_refresh: bool = False) -> int:
     repo_path = os.environ["REPO_MEMORY_REPO_PATH"]
     wiki_dir = os.environ["REPO_MEMORY_WIKI_DIR"]
     entity_map_path = os.environ["REPO_MEMORY_ENTITY_MAP"]
@@ -147,10 +149,18 @@ async def main() -> int:
 
         hr("BRIDGE BOOTSTRAP: refresh_index (indexes corpus -> writes entity_map.json)")
         print(f"  graph_is_current BEFORE refresh: {graph_is_current(state)}")
-        await call("refresh_index", refresh(state))
-        print(f"  graph_is_current AFTER refresh : {graph_is_current(state)}")
-        print(f"  entity_map.json written outside corpus? "
-              f"{os.path.isfile(entity_map_path)} -> {entity_map_path}")
+        if skip_refresh:
+            print("  --skip-refresh: NOT calling refresh_index; consuming the existing "
+                  "entity_map + warm CBM cache.")
+            if not graph_is_current(state):
+                print("  WARNING: graph_is_current is False — the entity_map is absent or "
+                      "stale; graph/hybrid tools may degrade. Re-run WITHOUT --skip-refresh "
+                      "to index the repo + rebuild entity_map.json.")
+        else:
+            await call("refresh_index", refresh(state))
+            print(f"  graph_is_current AFTER refresh : {graph_is_current(state)}")
+            print(f"  entity_map.json written outside corpus? "
+                  f"{os.path.isfile(entity_map_path)} -> {entity_map_path}")
 
         hr("GRAPH TOOLS (post-refresh)")
         await call("get_architecture", graph_tools.get_architecture(state))
@@ -190,4 +200,9 @@ async def _maybe(value):
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    _p = argparse.ArgumentParser(description="Drive the repo_memory MCP tools against a repo.")
+    _p.add_argument("--skip-refresh", action="store_true",
+                    help="Skip refresh_index; consume the existing entity_map without "
+                         "re-indexing (needs a current entity_map + warm CBM cache).")
+    _args = _p.parse_args()
+    sys.exit(asyncio.run(main(skip_refresh=_args.skip_refresh)))
