@@ -16,11 +16,18 @@
 </p>
 
 <p align="center">
+  <a href="./docs/INTRODUCTION.md"><strong>Vision</strong></a> •
   <a href="#quick-start"><strong>Quick Start</strong></a> •
   <a href="#cli-commands"><strong>CLI Commands</strong></a> •
   <a href="#documentation-output"><strong>Output Structure</strong></a> •
   <a href="./wiki-docs/index.html"><strong>Repo Docs</strong></a> •
   <a href="https://arxiv.org/abs/2510.24428"><strong>Paper</strong></a>
+</p>
+
+<p align="center">
+  🔁 <strong>This is KnowledgeLoop</strong> — a grounded, self-improving knowledge layer for
+  codebases, built on the CodeWiki foundation below.
+  Start with the <a href="./docs/INTRODUCTION.md"><strong>vision introduction&nbsp;→</strong></a>
 </p>
 
 <p align="center">
