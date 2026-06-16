@@ -41,7 +41,7 @@ on the roadmap:
 
 | Stage | What | Status |
 |---|---|---|
-| **Produce** | [CodeWiki](./docs/CODEWIKI.md) generates a holistic, architecture-aware wiki (Markdown + Mermaid) from a repo across 8 languages | ✅ Built |
+| **Produce** | [CodeWiki](./docs/CODEWIKI.md) generates a holistic, architecture-aware wiki (Markdown + Mermaid) from a repo across 9 languages | ✅ Built |
 | **Bridge** | Fuse the wiki with a verifiable code graph (Codebase-Memory-MCP) into a Wiki↔Graph map | ✅ Built |
 | **Consume** | The `repo_memory` MCP server answers grounded, freshness-aware questions via 12 tools | ✅ Built |
 | **Feed back** | Agents write execution results back into the knowledge base | 🟡 Roadmap |

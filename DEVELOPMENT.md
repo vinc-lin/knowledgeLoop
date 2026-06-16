@@ -76,9 +76,9 @@ pip install -r requirements.txt
 
 #### 1. Dependency Analysis (`src/be/dependency_analyzer/`)
 
-- **AST Parser**: Tree-sitter based parsing for 7 languages
+- **AST Parser**: Tree-sitter based parsing for 9 languages
 - **Dependency Graph Builder**: Constructs call graphs and dependency relationships
-- **Analyzers**: Language-specific analyzers (Python, Java, JavaScript, TypeScript, C, C++, C#)
+- **Analyzers**: Language-specific analyzers (Python, JavaScript, TypeScript, Java, Kotlin, C#, C, C++, PHP)
 
 #### 2. Module Clustering (`src/be/cluster_modules.py`)
 
@@ -101,7 +101,7 @@ pip install -r requirements.txt
 - `read_code_components.py`: Code reading utilities
 - `generate_sub_module_documentations.py`: Sub-module documentation generation
 - `str_replace_editor.py`: Documentation editing tools
-- `deps.py`: Dependency traversal tools
+- `deps.py`: Agent runtime dependency-injection container (`CodeWikiDeps`) + per-module tool-call diagnostics (`ToolDiagnostics`)
 
 ### Frontend Architecture
 
@@ -181,39 +181,29 @@ class AgentInstructions:
 
 ## Adding Support for New Languages
 
-To add support for a new programming language:
+Language analysis is wired through a hardcoded `if/elif` dispatch — there is **no**
+base class or registry (no `BaseAnalyzer`, no `LANGUAGE_ANALYZERS`). To add a language
+`<lang>`:
 
-1. **Add language analyzer** in `src/be/dependency_analyzer/analyzers/`:
+1. **Add an analyzer** at `src/be/dependency_analyzer/analyzers/<lang>.py`, modelled on
+   `analyzers/python.py`. Expose a module-level entry function
+   `analyze_<lang>_file(file_path, content, repo_path=...)` returning
+   `(functions, relationships)`. (A per-language parser/visitor class behind it is
+   optional — e.g. `python.py` uses `class PythonASTAnalyzer(ast.NodeVisitor)` with the
+   public entry point being the module-level `analyze_python_file`.)
 
-```python
-# new_language.py
-from .base import BaseAnalyzer
+2. **Wire the dispatch** in `src/be/dependency_analyzer/analysis/call_graph_analyzer.py`:
+   add an `elif language == "<lang>":` branch (alongside the existing
+   `python`/`javascript`/.../`php` branches) that calls a new `self._analyze_<lang>_file(...)`
+   method, which imports and calls your `analyze_<lang>_file`.
 
-class NewLanguageAnalyzer(BaseAnalyzer):
-    def __init__(self):
-        super().__init__("new_language")
-    
-    def extract_dependencies(self, ast_node):
-        # Implement dependency extraction
-        pass
-    
-    def extract_components(self, ast_node):
-        # Implement component extraction
-        pass
-```
+3. **Register the extensions** → language in
+   `src/be/dependency_analyzer/utils/patterns.py` (the `CODE_EXTENSIONS` map).
 
-2. **Register the analyzer** in `src/be/dependency_analyzer/ast_parser.py`:
+4. **Declare it supported** by adding `"<lang>"` to `_get_supported_languages()` in
+   `src/be/dependency_analyzer/analysis/analysis_service.py`.
 
-```python
-LANGUAGE_ANALYZERS = {
-    # ... existing languages ...
-    "new_language": NewLanguageAnalyzer,
-}
-```
-
-3. **Add file extensions** in configuration
-
-4. **Add tests** for the new language
+5. **Add the grammar dependency** (`tree-sitter-<lang>`) in `pyproject.toml` and **add tests**.
 
 ## Testing
 
@@ -268,11 +258,9 @@ graph TB
 ### Enable Verbose Logging
 
 ```bash
-# CLI
+# Verbose/debug output is driven by the --verbose / -v flag
+# (there is no log-level environment variable):
 codewiki generate --verbose
-
-# Environment variable
-export CODEWIKI_LOG_LEVEL=DEBUG
 ```
 
 ### Common Issues

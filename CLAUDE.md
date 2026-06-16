@@ -17,7 +17,7 @@ Python package and CLI are still named **`codewiki`** — this is intentional an
 should not be renamed without an explicit decision.
 
 CodeWiki generates holistic, architecture-aware documentation for large
-codebases: parse a repo (tree-sitter, 8 languages) → cluster it into a module
+codebases: parse a repo (tree-sitter, 9 languages) → cluster it into a module
 hierarchy → run a recursive per-module agent loop → emit Markdown + Mermaid
 diagrams + a browsable HTML wiki. It is multi-provider (OpenAI-compatible,
 Anthropic, Bedrock, Azure, plus subscription via Claude Code / Codex).

@@ -53,7 +53,7 @@ smarter the more it's used.
 
 ## Real today
 
-The foundation already works: KnowledgeLoop reads production codebases across eight
+The foundation already works: KnowledgeLoop reads production codebases across nine
 languages, builds their knowledge, and answers grounded, source-backed questions about
 them through a single interface. The next step — agents that write their learnings back —
 turns that foundation into a flywheel.
@@ -65,7 +65,7 @@ makes it a *loop* — is the roadmap.
 
 | Stage | Module / capability | What it does | Stage |
 |---|---|---|---|
-| **Produce** | CodeWiki engine | Parses a repo (8 languages) and generates an architecture-aware Markdown + Mermaid wiki | ✅ Built |
+| **Produce** | CodeWiki engine | Parses a repo (9 languages) and generates an architecture-aware Markdown + Mermaid wiki | ✅ Built |
 | **Bridge** | Wiki↔Graph entity map | Joins the narrative docs to a verifiable code graph, so every claim resolves to real code | ✅ Built |
 | **Consume** | `repo_memory` MCP facade | One interface, 12 tools — overview, search, call-tracing, grounded explanations, impact analysis | ✅ Built |
 | **Consume** | Freshness & fail-closed grounding | Tags every answer fresh / stale and refuses to answer rather than guess when the graph is out of date | ✅ Built |

@@ -102,7 +102,7 @@ codewiki config set \
   --cluster-model gpt-5.5
 ```
 
-**Subscription mode** routes every LLM call through the local `claude` / `codex` CLI binary (via the [`caw`](https://github.com/zzjas/caw) library), so you can run CodeWiki on a Claude Pro/Max or Codex subscription instead of paying per-token API usage. Claude Code's built-in `Write`/`Edit`/`Bash` tools are disabled inside CodeWiki's agent loop so documentation writes still go through CodeWiki's Mermaid-validating editor.
+**Subscription mode** routes every LLM call through the local `claude` / `codex` CLI binary (via the [`caw`](https://github.com/zzjas/caw) library), so you can run CodeWiki on a Claude Pro/Max or Codex subscription instead of paying per-token API usage. Claude Code's built-in `Write`/`Edit` tools are disabled inside CodeWiki's agent loop, so documentation writes still go through CodeWiki's Mermaid-validating editor. (`Bash`/exec is disabled for the `claude-code` path but enabled for `codex`, which can't enforce finer-grained built-in-tool restrictions; its prompts still direct writes through CodeWiki's editor.)
 
 > **Note on model names.** In subscription mode the model string is forwarded directly to `claude --model` / `codex --model`, so use the bare CLI model name (e.g. `gpt-5.4`, `claude-sonnet-4-6`) — **not** the litellm-style `openai/…` or `anthropic/…` prefix used by `openai-compatible`. If you previously ran with `openai-compatible`, re-run `config set` for **both** `--main-model` and `--cluster-model` to clear any stale prefixes; `config set` only updates the keys you pass.
 
@@ -129,7 +129,7 @@ codewiki generate --github-pages --create-branch
 
 ## What is CodeWiki?
 
-CodeWiki is an open-source framework for **automated repository-level documentation** across eight programming languages. It generates holistic, architecture-aware documentation that captures not only individual functions but also their cross-file, cross-module, and system-level interactions.
+CodeWiki is an open-source framework for **automated repository-level documentation** across nine programming languages. It generates holistic, architecture-aware documentation that captures not only individual functions but also their cross-file, cross-module, and system-level interactions.
 
 ### Key Innovations
 
@@ -141,7 +141,7 @@ CodeWiki is an open-source framework for **automated repository-level documentat
 
 ### Supported Languages
 
-**🐍 Python** • **☕ Java** • **🟨 JavaScript** • **🔷 TypeScript** • **⚙️ C** • **🔧 C++** • **🪟 C#** • **🎯 Kotlin**
+**🐍 Python** • **☕ Java** • **🟨 JavaScript** • **🔷 TypeScript** • **⚙️ C** • **🔧 C++** • **🪟 C#** • **🎯 Kotlin** • **🐘 PHP**
 
 ---
 
@@ -220,7 +220,7 @@ codewiki generate --instructions "Focus on public APIs and include usage example
   
 - **`--exclude`**: When specified, patterns are **MERGED** with default ignore patterns
   - Example: `--exclude "Tests,Specs"` will exclude these directories AND still exclude `.git`, `__pycache__`, `node_modules`, etc.
-  - Default patterns include: `.git`, `node_modules`, `__pycache__`, `*.pyc`, `bin/`, `dist/`, and many more
+  - Default patterns include: `.git`, `node_modules`, `__pycache__`, `*.pyc`, `bin/`, and many more
   - Supports multiple formats:
     - Exact names: `Tests`, `.env`, `config.local`
     - Glob patterns: `*.test.js`, `*_test.py`, `*.min.*`
