@@ -15,13 +15,15 @@ def hallucination_rate(referenced_symbols: list[str],
 def reuse_recall(referenced_symbols: list[str], touched_files: list[str], *,
                  expected_symbols: list[str], expected_files: list[str]) -> float:
     """Recall of the ground-truth key (expected symbols+files) by the solution. 1.0 if key empty."""
-    key = [("sym", s) for s in expected_symbols] + [("file", f) for f in expected_files]
-    if not key:
+    exp_syms = list(dict.fromkeys(expected_symbols))      # dedup, order-preserving
+    exp_files = list(dict.fromkeys(expected_files))
+    total = len(exp_syms) + len(exp_files)
+    if total == 0:
         return 1.0
     got_syms, got_files = set(referenced_symbols), set(touched_files)
-    hit = sum(1 for kind, v in key
-              if (v in got_syms if kind == "sym" else v in got_files))
-    return hit / len(key)
+    hit = (sum(1 for s in exp_syms if s in got_syms)
+           + sum(1 for f in exp_files if f in got_files))
+    return hit / total
 
 
 def exploration_cost(tool_calls: int) -> int:
