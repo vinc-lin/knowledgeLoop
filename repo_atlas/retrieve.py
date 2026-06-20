@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 
 def rrf_fuse(ranked_lists: list[list[str]], k0: int = 60) -> list[tuple[str, float]]:
     """Reciprocal Rank Fusion over lists of ids (best-first)."""
@@ -12,7 +10,7 @@ def rrf_fuse(ranked_lists: list[list[str]], k0: int = 60) -> list[tuple[str, flo
     return sorted(scores.items(), key=lambda t: t[1], reverse=True)
 
 
-def _hit(unit, repo_head, score, matched_via) -> dict:
+def _hit(unit, score, matched_via) -> dict:
     return {
         "repo": unit.repo, "kind": unit.kind, "name": unit.name,
         "qualified_name": unit.qualified_name, "file": unit.file,
@@ -35,7 +33,7 @@ async def find_related_units(store, embedder, query: str, *, repos=None, kinds=N
     hits = []
     for uid, score in fused[:k]:
         u = by_id[uid]
-        via = "+".join(([("keyword")] if uid in kw_ids else [])
+        via = "+".join((["keyword"] if uid in kw_ids else [])
                        + (["semantic"] if uid in vec_ids else []))
-        hits.append(_hit(u, u.repo_head, score, via))
+        hits.append(_hit(u, score, via))
     return hits
