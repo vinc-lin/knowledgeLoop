@@ -21,3 +21,11 @@ def test_extract_files_and_symbols():
 
 def test_extract_empty_diff():
     assert extract_refs("") == ([], [])
+
+
+def test_extract_dedups_files():
+    # two diff chunks touching the same file -> file listed once
+    two = ("--- /dev/null\n+++ b/foo.py\n@@ -0,0 +1 @@\n+aaa\n"
+           "--- a/foo.py\n+++ b/foo.py\n@@ -0,0 +1 @@\n+bbb\n")
+    symbols, files = extract_refs(two)
+    assert files == ["foo.py"]

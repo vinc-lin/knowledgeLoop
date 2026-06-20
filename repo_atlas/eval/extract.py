@@ -10,14 +10,14 @@ def extract_refs(diff: str) -> tuple[list[str], list[str]]:
     """From a unified diff: (referenced identifiers in added lines, touched files).
 
     Heuristic — added-line identifiers approximate the symbols/APIs the agent used."""
-    files: list[str] = []
+    files: dict[str, None] = {}        # order-preserving dedup (same as symbols)
     symbols: dict[str, None] = {}
     for line in diff.splitlines():
         fm = _FILE.match(line)
         if fm:
-            files.append(fm.group(1).strip())
+            files[fm.group(1).strip()] = None
             continue
         if line.startswith("+") and not line.startswith("+++"):
             for tok in _IDENT.findall(line[1:]):
                 symbols[tok] = None
-    return list(symbols), files
+    return list(symbols), list(files)
