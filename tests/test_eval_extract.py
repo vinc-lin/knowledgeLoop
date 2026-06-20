@@ -14,9 +14,21 @@ new file mode 100644
 def test_extract_files_and_symbols():
     symbols, files = extract_refs(DIFF)
     assert "lib/sepia.cpp" in files
-    assert "cgeImageFilter" in symbols
-    assert "cgeBrightnessAdjust" in symbols
-    assert "SepiaFilter" in symbols
+    assert "cgeImageFilter" in symbols          # CamelCase
+    assert "cgeBrightnessAdjust" in symbols     # CamelCase + call site
+    assert "SepiaFilter" in symbols             # PascalCase
+    # language keywords are NOT counted as symbol references
+    assert "class" not in symbols and "public" not in symbols and "void" not in symbols
+
+
+def test_extract_filters_keywords_and_locals():
+    diff = ("--- /dev/null\n+++ b/a.c\n@@ -0,0 +1 @@\n"
+            "+    int total = computeSum(items);\n")
+    symbols, _ = extract_refs(diff)
+    assert "computeSum" in symbols              # call site + CamelCase
+    # primitives / plain lowercase locals are dropped
+    assert "int" not in symbols
+    assert "total" not in symbols and "items" not in symbols
 
 
 def test_extract_empty_diff():
