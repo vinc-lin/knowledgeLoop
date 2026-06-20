@@ -43,3 +43,17 @@ def test_symbols_exist_and_nearest(tmp_path):
     assert res["cgeApplyBrightness"] is False
     near = st.nearest_symbols("r1", "cgeApplyBrightness", k=3)
     assert "cgeBrightnessAdjust" in [n.name for n in near]
+
+
+def test_keyword_search_with_repo_and_kind_filter(tmp_path):
+    st = Store(str(tmp_path / "a.db"))
+    units = [_u("r1", "symbol", "brightness", "adjust brightness", qn="m.b"),
+             _u("r1", "doc", "Brightness Guide", "brightness docs", file="b.md"),
+             _u("r2", "symbol", "brightness", "other brightness", qn="m2.b")]
+    vecs = [[1.0], [1.0], [1.0]]
+    # reindex per repo (reindex_repo replaces a single repo's rows)
+    st.reindex_repo("r1", list(zip(units[:2], vecs[:2])), repo_head="H")
+    st.reindex_repo("r2", [(units[2], vecs[2])], repo_head="H")
+    hits = st.keyword_search("brightness", k=10, repos=["r1"], kinds=["symbol"])
+    names_repos = {(u.repo, u.kind) for u, _ in hits}
+    assert names_repos == {("r1", "symbol")}      # filtered, and DOES NOT raise

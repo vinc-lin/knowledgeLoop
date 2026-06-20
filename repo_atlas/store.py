@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
+import re
 import sqlite3
 import time
 from dataclasses import dataclass, field
@@ -45,7 +47,6 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 class Store:
     def __init__(self, path: str):
-        import os
         os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
@@ -104,9 +105,9 @@ class Store:
     def _filter_sql(self, repos, kinds):
         clauses, params = [], []
         if repos:
-            clauses.append(f"repo IN ({','.join('?' * len(repos))})"); params += list(repos)
+            clauses.append(f"u.repo IN ({','.join('?' * len(repos))})"); params += list(repos)
         if kinds:
-            clauses.append(f"kind IN ({','.join('?' * len(kinds))})"); params += list(kinds)
+            clauses.append(f"u.kind IN ({','.join('?' * len(kinds))})"); params += list(kinds)
         return (" AND " + " AND ".join(clauses) if clauses else ""), params
 
     def keyword_search(self, query, k=20, repos=None, kinds=None):
@@ -157,7 +158,6 @@ def _fts_query(text: str) -> str:
     boundaries so that e.g. ``cgeApplyBrightness`` also emits the sub-words
     ``cge``, ``Apply``, ``Brightness`` for fuzzy nearest-symbol matching.
     """
-    import re
     # First split on non-alphanumeric separators
     raw = re.findall(r"[A-Za-z0-9]+", text)
     toks: list[str] = []
