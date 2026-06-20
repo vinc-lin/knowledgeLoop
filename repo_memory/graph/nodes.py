@@ -73,3 +73,25 @@ class CBMGraphProbe:
             if (row.get("qualified_name") or row.get("name")) == qn:
                 return row_to_node(row)
         return None
+
+
+async def enumerate_all_nodes(client, *, project: str, page_size: int = 200) -> list[dict]:
+    """Every symbol row of a project (no filter), deduped by qualified_name.
+
+    Returns the raw CBM search_graph rows (richer than NodeRecord) so callers can
+    keep label/signature/etc. Touched only at index time.
+    """
+    seen: dict[str, dict] = {}
+    offset = 0
+    while True:
+        resp = await forward.search_graph(client, project=project,
+                                          limit=page_size, offset=offset)
+        rows = _rows(resp)
+        for row in rows:
+            qn = row.get("qualified_name") or row.get("name")
+            if qn:
+                seen[qn] = row
+        if len(rows) < page_size or not (isinstance(resp, dict) and resp.get("has_more")):
+            break
+        offset += page_size
+    return list(seen.values())
