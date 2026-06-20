@@ -26,5 +26,12 @@ async def run_pair(task, runner, judge, exists_fn: Callable[[str], bool]):
 
 
 async def run_eval(tasks, runner, judge, exists_fn: Callable[[str], bool]):
-    pairs = [await run_pair(t, runner, judge, exists_fn) for t in tasks]
+    """Run every task; a task whose agent run/judge raises is skipped (logged), so one
+    bad run doesn't waste a long multi-task eval. Scorecard `n` = completed tasks."""
+    pairs = []
+    for t in tasks:
+        try:
+            pairs.append(await run_pair(t, runner, judge, exists_fn))
+        except Exception as exc:                       # noqa: BLE001 - resilience boundary
+            print(f"[eval] task {t.id} failed, skipping: {type(exc).__name__}: {exc}")
     return aggregate(pairs)

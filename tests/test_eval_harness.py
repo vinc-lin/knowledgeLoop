@@ -22,3 +22,18 @@ async def test_run_eval_end_to_end_with_stubs():
     assert p.baseline.hallucination_rate == 1.0
     assert p.treatment.reuse_recall == 1.0
     assert p.treatment.exploration_cost == 4
+
+
+@pytest.mark.asyncio
+async def test_run_eval_skips_a_failing_task():
+    class BoomRunner:
+        async def run(self, task, *, condition):
+            if task.id == "boom":
+                raise RuntimeError("agent died")
+            return RunResult(condition, [], [], 1, 1, {}, "")
+
+    tasks = [Task(id="ok", kind="dev", repo="r", prompt="p", rubric="x"),
+             Task(id="boom", kind="dev", repo="r", prompt="p", rubric="x")]
+    sc = await run_eval(tasks, BoomRunner(), StubJudge({"ok": True}), lambda s: True)
+    assert sc.summary["n"] == 1                         # "boom" skipped, "ok" kept
+    assert sc.pairs[0].task_id == "ok"
