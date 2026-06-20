@@ -25,6 +25,11 @@ def build_parser() -> argparse.ArgumentParser:
     ix.add_argument("--repo", help="index a single registered repo by name")
     ix.add_argument("--registry",
                     help="path to atlas.toml (default: $REPO_ATLAS_REGISTRY or ./atlas.toml)")
+    ev = sub.add_parser("eval", help="run the with/without eval harness")
+    ev.add_argument("--tasks", required=True, help="dir of task .toml files")
+    ev.add_argument("--out", default="eval-scorecard.md", help="scorecard output path")
+    ev.add_argument("--limit", type=int, default=0, help="limit number of tasks (0 = all)")
+    ev.add_argument("--mcp-config", help="MCP config json pointing at repo-atlas (treatment)")
     return p
 
 
@@ -49,10 +54,49 @@ def _run_index(args) -> int:
     return 0
 
 
+def _run_eval(args) -> int:
+    from repo_atlas.config import load_config
+    from repo_atlas.store import Store
+    from repo_atlas.eval.tasks import load_tasks
+    from repo_atlas.eval.runner import ClaudeRunner
+    from repo_atlas.eval.judge import GatewayJudge
+    from repo_atlas.eval.oracle import store_exists_fn
+    from repo_atlas.eval.harness import run_eval
+    from repo_atlas.eval.report import render_scorecard
+    from repo_atlas.registry import load_registry
+
+    cfg = load_config(os.environ)
+    tasks = load_tasks(args.tasks)
+    if args.limit:
+        tasks = tasks[:args.limit]
+    if not tasks:
+        print(f"repo_atlas eval: no tasks in {args.tasks}")
+        return 2
+    store = Store(cfg.db_path)
+    registry = {e.name: e.repo_path
+                for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
+    runner = ClaudeRunner(registry, args.mcp_config or "")
+    judge = GatewayJudge(cfg.base_url, cfg.api_key,
+                         os.environ.get("REPO_ATLAS_JUDGE_MODEL", "deepseek-chat"))
+    oracles = {name: store_exists_fn(store, name) for name in registry}
+
+    sc = asyncio.run(run_eval(
+        tasks, runner, judge,
+        exists_fn=lambda s: any(o(s) for o in oracles.values())))
+    md = render_scorecard(sc)
+    with open(args.out, "w") as fh:
+        fh.write(md)
+    print(md)
+    print(f"\nwrote {args.out}")
+    return 0
+
+
 def main(argv: Optional[list] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.cmd == "index":
         return _run_index(args)
+    if args.cmd == "eval":
+        return _run_eval(args)
     from repo_atlas.server import main as serve_main
     serve_main()
     return 0
