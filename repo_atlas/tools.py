@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from repo_memory.contract import envelope
 from repo_atlas.retrieve import find_related_units
 from repo_atlas.registry import repo_freshness, _head
