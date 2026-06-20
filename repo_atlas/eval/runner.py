@@ -50,26 +50,29 @@ class ClaudeRunner:
     async def run(self, task: Task, *, condition: str) -> RunResult:
         src = self._repo_paths[task.repo]
         work = tempfile.mkdtemp(prefix=f"eval-{task.id}-{condition}-")
-        subprocess.run(f"git -C {src} archive HEAD | tar -x -C {work}", shell=True, check=True)
-        subprocess.run(["git", "-C", work, "init", "-q"], check=True)
-        subprocess.run(["git", "-C", work, "add", "-A"], check=True)
-        subprocess.run(["git", "-C", work, "-c", "user.email=e@x", "-c", "user.name=e",
-                        "commit", "-qm", "base"], check=True)
+        try:
+            # src (config) + work (mkdtemp) are trusted, not user input -> shell pipe is safe.
+            subprocess.run(f"git -C {src} archive HEAD | tar -x -C {work}", shell=True, check=True)
+            subprocess.run(["git", "-C", work, "init", "-q"], check=True)
+            subprocess.run(["git", "-C", work, "add", "-A"], check=True)
+            subprocess.run(["git", "-C", work, "-c", "user.email=e@x", "-c", "user.name=e",
+                            "commit", "-qm", "base"], check=True)
 
-        cmd = ["claude", "-p", task.prompt, "--output-format", "json",
-               "--permission-mode", "acceptEdits", "--add-dir", work, "--model", self._model]
-        if condition == "treatment":
-            cmd += ["--mcp-config", self._mcp, "--strict-mcp-config",
-                    "--allowedTools", "mcp__repo-atlas__find_related",
-                    "mcp__repo-atlas__prepare_change", "mcp__repo-atlas__verify_grounding"]
-        proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True, timeout=900)
-        raw = json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
-        diff = subprocess.run(["git", "-C", work, "diff", "HEAD"],
-                              capture_output=True, text=True).stdout
+            cmd = ["claude", "-p", task.prompt, "--output-format", "json",
+                   "--permission-mode", "acceptEdits", "--add-dir", work, "--model", self._model]
+            if condition == "treatment":
+                cmd += ["--mcp-config", self._mcp, "--strict-mcp-config",
+                        "--allowedTools", "mcp__repo-atlas__find_related",
+                        "mcp__repo-atlas__prepare_change", "mcp__repo-atlas__verify_grounding"]
+            proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True, timeout=900)
+            raw = json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
+            # NOTE: agent-driven `git commit` inside the run would evade this working-tree diff.
+            diff = subprocess.run(["git", "-C", work, "diff", "HEAD"],
+                                  capture_output=True, text=True).stdout
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
         symbols, files = extract_refs(diff)
         usage = raw.get("usage", {}) if isinstance(raw, dict) else {}
         tokens = int(usage.get("output_tokens", 0)) + int(usage.get("input_tokens", 0))
-        tool_calls = int(raw.get("num_turns", 0)) if isinstance(raw, dict) else 0
-        result = RunResult(condition, symbols, files, tool_calls, tokens, raw, diff)
-        shutil.rmtree(work, ignore_errors=True)
-        return result
+        tool_calls = int(raw.get("num_turns", 0)) if isinstance(raw, dict) else 0  # proxy
+        return RunResult(condition, symbols, files, tool_calls, tokens, raw, diff)
