@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 from repo_atlas.chunk import doc_units
@@ -40,7 +41,6 @@ async def index_repo(entry: RepoEntry, store: Store, embedder) -> int:
     from repo_memory.graph.client import CBMClient
     from repo_memory.graph import forward
     from repo_memory.graph.nodes import enumerate_all_nodes
-    import os
 
     repo_head = _resolve_repo_head(entry.repo_path, os.environ)
     wiki = load_wiki(entry.wiki_dir)
@@ -51,7 +51,10 @@ async def index_repo(entry: RepoEntry, store: Store, embedder) -> int:
     try:
         await client.start()
         idx = await forward.index_repository(client, repo_path=entry.repo_path)
-        project = idx["project"]
+        project = idx.get("project") if isinstance(idx, dict) else None
+        if not project:
+            raise RuntimeError(
+                f"CBM index_repository did not return a project id (got: {idx!r})")
         symbol_rows = await enumerate_all_nodes(client, project=project)
     finally:
         await client.aclose()
@@ -62,5 +65,5 @@ async def index_repo(entry: RepoEntry, store: Store, embedder) -> int:
     return len(units)
 
 
-async def index_all(entries, store: Store, embedder) -> dict:
+async def index_all(entries: list[RepoEntry], store: Store, embedder) -> dict:
     return {e.name: await index_repo(e, store, embedder) for e in entries}
