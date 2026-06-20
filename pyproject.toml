@@ -57,7 +57,8 @@ dependencies = [
     "python-multipart>=0.0.20",
     "colorama>=0.4.6",
     "logfire>=4.1.0",
-    "coding-agent-wrapper>=0.1.2"
+    "coding-agent-wrapper>=0.1.2",
+    "httpx"
 ]
 
 [external]
@@ -79,6 +80,7 @@ dev = [
 [project.scripts]
 codewiki = "codewiki.cli.main:cli"
 repo-memory = "repo_memory.server:main"
+repo-atlas = "repo_atlas.server:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/codewiki"
@@ -107,7 +109,8 @@ packages = [
     "repo_memory.bridge",
     "repo_memory.graph",
     "repo_memory.wiki",
-    "repo_memory.tools"
+    "repo_memory.tools",
+    "repo_atlas"
 ]
 
 [tool.setuptools.package-data]
