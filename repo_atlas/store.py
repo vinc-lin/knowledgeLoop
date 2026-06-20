@@ -105,9 +105,11 @@ class Store:
     def _filter_sql(self, repos, kinds):
         clauses, params = [], []
         if repos:
-            clauses.append(f"u.repo IN ({','.join('?' * len(repos))})"); params += list(repos)
+            clauses.append(f"u.repo IN ({','.join('?' * len(repos))})")
+            params += list(repos)
         if kinds:
-            clauses.append(f"u.kind IN ({','.join('?' * len(kinds))})"); params += list(kinds)
+            clauses.append(f"u.kind IN ({','.join('?' * len(kinds))})")
+            params += list(kinds)
         return (" AND " + " AND ".join(clauses) if clauses else ""), params
 
     def keyword_search(self, query, k=20, repos=None, kinds=None):
