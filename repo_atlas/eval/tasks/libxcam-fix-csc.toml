@@ -1,0 +1,7 @@
+id = "libxcam-fix-csc"
+kind = "bugfix"
+repo = "libxcam"
+prompt = "The color-space-conversion handler in libxcam produces incorrect output for a specific input format. Fix the CSC image handler."
+rubric = "A correct solution edits the CLCscImageHandler (color space conversion) implementation to correct the conversion."
+expected_symbols = ["CLCscImageHandler"]
+expected_files = ["modules/ocl/cl_3a_image_processor.h"]

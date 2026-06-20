@@ -1,0 +1,6 @@
+id = "gpuimage-fix-jni-registration"
+kind = "bugfix"
+repo = "android-gpuimage-plus"
+prompt = "A native method is failing to bind from Java to C++. Fix the JNI registration in the CGE native bridge so the Java layer can call into the native filter code."
+rubric = "A correct solution edits the JNI bridge (the extern \"C\" entry points in cgeGlobal.h, or the native method registration) so the native method is correctly registered/exported."
+expected_files = ["library/src/main/jni/cge/common/cgeGlobal.h"]

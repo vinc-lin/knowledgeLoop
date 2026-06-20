@@ -1,0 +1,7 @@
+id = "libxcam-add-handler"
+kind = "dev"
+repo = "libxcam"
+prompt = "Add a new OpenCL image handler to libxcam that applies a simple gamma adjustment, following the existing CLImageHandler pattern in the ocl module."
+rubric = "A correct solution defines a new handler that subclasses or follows the CLImageHandler base pattern in the ocl module."
+expected_symbols = ["CLImageHandler"]
+expected_files = ["modules/ocl/cl_image_handler.h"]

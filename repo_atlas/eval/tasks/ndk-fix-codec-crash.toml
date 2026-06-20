@@ -1,0 +1,6 @@
+id = "ndk-fix-codec-crash"
+kind = "bugfix"
+repo = "ndk-samples"
+prompt = "The native-codec sample crashes when the media format changes mid-stream. Fix the native codec handling so a format change is handled safely."
+rubric = "A correct solution edits the native-codec JNI/native code to handle the format-change case without crashing."
+expected_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]

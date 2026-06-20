@@ -1,0 +1,7 @@
+id = "gpuimage-add-sepia"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a sepia-tone image filter to the CGE native filter library, following the existing filter pattern used by the other cge*Adjust filters."
+rubric = "A correct solution defines a new filter class that subclasses the existing cgeImageFilter base class and implements the filter following the pattern of the sibling cge*Adjust filters."
+expected_symbols = ["cgeImageFilter"]
+expected_files = ["library/src/main/jni/cge/common/cgeImageFilter.h"]

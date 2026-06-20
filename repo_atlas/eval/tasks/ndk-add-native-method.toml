@@ -1,0 +1,7 @@
+id = "ndk-add-native-method"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "Add a second native method to the hello-jni sample that returns the device's ABI string, registered the same way as the existing native method."
+rubric = "A correct solution adds a native function in hello-jni.cpp and registers it (via JNI_OnLoad / RegisterNatives or a JNIEXPORT function) following the existing pattern."
+expected_symbols = ["JNI_OnLoad"]
+expected_files = ["hello-jni/app/src/main/cpp/hello-jni.cpp"]
