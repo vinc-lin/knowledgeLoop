@@ -43,5 +43,8 @@ class GatewayJudge:
                                 "messages": [{"role": "user", "content": prompt}]},
                           timeout=self._timeout)
         resp.raise_for_status()
-        text = resp.json()["choices"][0]["message"]["content"].strip().upper()
+        try:                                  # tolerate a malformed/error 200 payload
+            text = resp.json()["choices"][0]["message"]["content"].strip().upper()
+        except (KeyError, IndexError, TypeError):
+            return False
         return text.startswith("PASS")
