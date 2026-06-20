@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import tomllib
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -23,7 +24,7 @@ def load_registry(path: str) -> list[RepoEntry]:
 
 
 def _head(repo_path: str) -> Optional[str]:
-    return _resolve_repo_head(repo_path, {})
+    return _resolve_repo_head(repo_path, os.environ)
 
 
 def repo_freshness(entry: RepoEntry, store, *,
