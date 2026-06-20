@@ -1,0 +1,29 @@
+from repo_atlas.eval.aggregate import TaskScore, make_pair, aggregate
+
+
+def _score(cond, success, hall, reuse, expl):
+    return TaskScore(task_id="t1", condition=cond, success=success,
+                     hallucination_rate=hall, reuse_recall=reuse, exploration_cost=expl)
+
+
+def test_make_pair_regression_flag():
+    base = _score("baseline", success=False, hall=0.5, reuse=0.0, expl=10)
+    treat = _score("treatment", success=True, hall=0.0, reuse=1.0, expl=4)
+    pair = make_pair("t1", base, treat)
+    assert pair.regressed is False     # treatment improved on success
+
+    base2 = _score("baseline", success=True, hall=0.0, reuse=1.0, expl=4)
+    treat2 = _score("treatment", success=False, hall=0.5, reuse=0.0, expl=10)
+    assert make_pair("t1", base2, treat2).regressed is True   # treatment worse on success
+
+
+def test_aggregate_summary():
+    base = _score("baseline", success=False, hall=0.6, reuse=0.0, expl=10)
+    treat = _score("treatment", success=True, hall=0.1, reuse=1.0, expl=4)
+    sc = aggregate([make_pair("t1", base, treat)])
+    s = sc.summary
+    assert s["n"] == 1
+    assert s["success_baseline"] == 0.0 and s["success_treatment"] == 1.0
+    assert s["hallucination_delta"] == -0.5    # treatment - baseline (lower is better)
+    assert s["reuse_delta"] == 1.0
+    assert s["regressed_count"] == 0
