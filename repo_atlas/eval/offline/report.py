@@ -11,24 +11,27 @@ def _retrieval_section(rep, ks=(5, 10, 20)) -> list:
         return ["## Retrieval (find_related)\n_no retrieval layer run._\n"]
     ks = tuple(ks)
     kmax = max(ks)
-    recall_cols = [f"Recall@{k}" for k in ks]
-    header = "| scope | " + " | ".join(recall_cols + [f"Hit@{kmax}", "MRR", f"nDCG@{kmax}"]) + " |"
-    sep = "|---" * (len(recall_cols) + 4) + "|"
-    lines = [f"## Retrieval (find_related) — cases: {rep.overall['n']}\n", header, sep]
+    succ_cols = [f"Success@{k}" for k in ks]
+    header = "| scope | " + " | ".join(succ_cols + ["MRR", f"nDCG@{kmax}"]) + " |"
+    sep = "|---" * (len(succ_cols) + 3) + "|"
+    mg = rep.overall.get("median_golds")
+    title = (f"## Retrieval (find_related) — cases: {rep.overall['n']}"
+             + (f"  (median golds/case: {_f(mg)})" if mg is not None else "") + "\n")
+    lines = [title, header, sep]
 
     def row(name, agg):
-        cells = [name]
-        cells += [_f(agg.get(f"recall@{k}", 0)) for k in ks]
-        cells += [_f(agg.get(f"hit@{kmax}", 0)), _f(agg.get("mrr", 0)),
-                  _f(agg.get(f"ndcg@{kmax}", 0))]
+        cells = [name] + [_f(agg.get(f"success@{k}", 0)) for k in ks]
+        cells += [_f(agg.get("mrr", 0)), _f(agg.get(f"ndcg@{kmax}", 0))]
         return "| " + " | ".join(cells) + " |"
 
     lines.append(row("overall", rep.overall))
     for repo in sorted(rep.per_repo):
         lines.append(row(repo, rep.per_repo[repo]))
-    sym = rep.overall.get(f"sym_recall@{kmax}")
+    lines.append(f"\n(secondary) coverage Recall@{kmax} (fraction of all acceptable golds): "
+                 f"{_f(rep.overall.get(f'recall@{kmax}', 0))} overall")
+    sym = rep.overall.get(f"sym_success@{kmax}")
     if sym is not None:
-        lines.append(f"\n(secondary) symbol-level Recall@{kmax} overall: {_f(sym)}")
+        lines.append(f"(secondary) symbol-level Success@{kmax}: {_f(sym)} overall")
     return lines
 
 
