@@ -32,4 +32,5 @@ async def test_index_and_find_related(tmp_path):
     assert n > 0
     env = await find_related(store, emb, "adjust image brightness")
     assert env["result"], "expected related hits"
-    assert any(h["repo"] == "gpuimage" for h in env["result"])
+    flat = env["result"]["symbols"] + env["result"]["docs"]     # grouped buckets now
+    assert any(h["repo"] == "gpuimage" for h in flat)

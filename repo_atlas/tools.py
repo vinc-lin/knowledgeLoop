@@ -1,14 +1,27 @@
 from __future__ import annotations
 
+import os
+
 from repo_memory.contract import envelope
 from repo_atlas.retrieve import find_related_units
 from repo_atlas.registry import repo_freshness, _head
 
 
+def _symbol_ratio() -> float:
+    from repo_atlas.config import load_config
+    return load_config(os.environ).symbol_ratio
+
+
 async def find_related(store, embedder, query: str, *, repos=None, kinds=None,
                        k: int = 20) -> dict:
-    hits = await find_related_units(store, embedder, query, repos=repos, kinds=kinds, k=k)
-    return envelope(hits, freshness="fresh" if hits else "unverified",
+    hits = await find_related_units(store, embedder, query, repos=repos, kinds=kinds, k=k,
+                                    symbol_ratio=_symbol_ratio())
+    if kinds is None:                              # grouped buckets for the default mixed call
+        payload = {"docs": [h for h in hits if h["kind"] == "doc"],
+                   "symbols": [h for h in hits if h["kind"] == "symbol"]}
+    else:                                          # explicit kinds -> flat (back-compat)
+        payload = hits
+    return envelope(payload, freshness="fresh" if hits else "unverified",
                     warnings=[] if hits else ["no matches in index"])
 
 

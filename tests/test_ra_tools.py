@@ -18,11 +18,16 @@ def _seed(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_find_related_envelope(tmp_path):
-    st, emb = _seed(tmp_path)
-    env = await tools.find_related(st, emb, "brightness")
+async def test_find_related_groups_buckets(tmp_path):
+    st, emb = _seed(tmp_path)                      # existing helper in this file
+    env = await tools.find_related(st, emb, "brightness")        # kinds unset -> grouped
     assert "result" in env and "freshness" in env
-    assert any(h["name"] == "cgeBrightnessAdjust" for h in env["result"])
+    res = env["result"]
+    assert set(res) == {"docs", "symbols"}
+    assert any(h["name"] == "cgeBrightnessAdjust" for h in res["symbols"])
+    # explicit kinds -> flat list (no grouping)
+    flat = await tools.find_related(st, emb, "brightness", kinds=["symbol"])
+    assert isinstance(flat["result"], list)
 
 
 def test_verify_grounding_flags_hallucinations(tmp_path):
