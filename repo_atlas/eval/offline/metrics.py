@@ -11,8 +11,8 @@ def recall_at_k(ranked_files: list, gold: set, k: int) -> float:
     return len(gold & topk) / len(gold)
 
 
-def hit_rate_at_k(ranked_files: list, gold: set, k: int) -> float:
-    """1.0 if any of the top-k ranked files is gold, else 0.0."""
+def success_at_k(ranked_files: list, gold: set, k: int) -> float:
+    """1.0 if any acceptable gold file is in the top-k, else 0.0 (any-of relevance)."""
     return 1.0 if (gold & set(ranked_files[:k])) else 0.0
 
 
@@ -38,17 +38,15 @@ def ndcg_at_k(ranked_files: list, gold: set, k: int) -> float:
     return dcg / idcg if idcg else 0.0
 
 
-def symbol_recall_at_k(hits: list, gold_symbols, k: int) -> float:
-    """Fraction of gold symbols whose name or qualified_name appears in the top-k hits."""
+def symbol_success_at_k(hits: list, gold_symbols, k: int) -> float:
+    """1.0 if any gold symbol (by name or qualified_name) appears in the top-k hits."""
     gold = set(gold_symbols)
     if not gold:
         return 0.0
-    seen = set()
     for h in hits[:k]:
-        for key in (h.get("name"), h.get("qualified_name")):
-            if key in gold:
-                seen.add(key)
-    return len(seen) / len(gold)
+        if h.get("name") in gold or h.get("qualified_name") in gold:
+            return 1.0
+    return 0.0
 
 
 def grounding_scores(verify_result: dict, real: list, fake: list) -> dict:

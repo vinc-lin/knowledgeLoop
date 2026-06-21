@@ -11,9 +11,11 @@ def test_recall_at_k_file_level():
     assert m.recall_at_k([], {"a.h"}, k=4) == 0.0
 
 
-def test_hit_rate_at_k():
-    assert m.hit_rate_at_k(["x", "a.h"], {"a.h"}, k=2) == 1.0
-    assert m.hit_rate_at_k(["x", "a.h"], {"a.h"}, k=1) == 0.0
+def test_success_at_k():
+    assert m.success_at_k(["x", "a.h"], {"a.h"}, k=2) == 1.0
+    assert m.success_at_k(["x", "a.h"], {"a.h"}, k=1) == 0.0
+    assert m.success_at_k(["x"], {"a.h", "b.h"}, k=1) == 0.0       # none of the alternatives
+    assert m.success_at_k(["b.h"], {"a.h", "b.h"}, k=1) == 1.0     # any acceptable gold -> hit
 
 
 def test_mrr_uses_full_list():
@@ -33,12 +35,14 @@ def test_ndcg_dedup_and_ideal():
     assert g2 == 1.0
 
 
-def test_symbol_recall_at_k():
+def test_symbol_success_at_k():
     hits = [{"name": "Foo", "qualified_name": "ns.Foo"},
             {"name": "Bar", "qualified_name": None}]
-    assert m.symbol_recall_at_k(hits, ["Foo", "Bar", "Baz"], k=2) == 2 / 3
-    assert m.symbol_recall_at_k(hits, ["ns.Foo"], k=2) == 1.0     # matches qualified_name
-    assert m.symbol_recall_at_k(hits, [], k=2) == 0.0
+    assert m.symbol_success_at_k(hits, ["Foo", "Baz"], k=2) == 1.0     # any-of: Foo found
+    assert m.symbol_success_at_k(hits, ["ns.Foo"], k=2) == 1.0         # qualified_name match
+    assert m.symbol_success_at_k(hits, ["Nope", "Nada"], k=2) == 0.0   # none found
+    assert m.symbol_success_at_k(hits, [], k=2) == 0.0
+    assert m.symbol_success_at_k(hits, ["Bar"], k=1) == 0.0            # Bar not in top-1
 
 
 def test_grounding_scores():
