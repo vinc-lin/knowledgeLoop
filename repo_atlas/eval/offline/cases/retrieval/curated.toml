@@ -1,4 +1,3 @@
-# repo_atlas/eval/offline/cases/retrieval/curated.toml
 [[case]]
 id = "cur-gpuimage-filter-base"
 repo = "android-gpuimage-plus"
@@ -16,7 +15,11 @@ gold_files = ["library/src/main/jni/cge/common/cgeImageHandler.h"]
 id = "cur-gpuimage-jni-bridge"
 repo = "android-gpuimage-plus"
 query = "extern C JNI entry points exporting the CGE native library to Java"
-gold_files = ["library/src/main/jni/cge/common/cgeGlobal.h"]
+gold_files = [
+  "library/src/main/jni/interface/cgeNativeLibrary.h",
+  "library/src/main/jni/interface/cgeNativeLibrary.cpp",
+  "library/src/main/jni/cge/common/cgeGlobal.h",
+]
 
 [[case]]
 id = "cur-libxcam-image-handler-base"
@@ -29,7 +32,10 @@ gold_symbols = ["CLImageHandler"]
 id = "cur-libxcam-3a-processor"
 repo = "libxcam"
 query = "OpenCL 3A image processor pipeline that chains color conversion and adjustment handlers"
-gold_files = ["modules/ocl/cl_3a_image_processor.h"]
+gold_files = [
+  "modules/ocl/cl_3a_image_processor.h",
+  "modules/ocl/cl_csc_image_processor.h",
+]
 
 [[case]]
 id = "cur-libxcam-context"
