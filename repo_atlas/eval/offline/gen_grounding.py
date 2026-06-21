@@ -12,13 +12,34 @@ import os
 import re
 
 _SRC_EXT = (".h", ".hpp", ".hxx", ".c", ".cc", ".cpp", ".cxx", ".java", ".kt")
-_CLASS = re.compile(r"\b(?:class|struct|interface)\s+([A-Za-z_][A-Za-z0-9_]{2,})")
+# Definition-anchored: the class/struct/interface keyword must be followed by a name and then a
+# definition/declaration token ('{' body, ':' base-clause/bitfield-free, or ';' forward-decl) —
+# optionally with `final` or a base-clause in between. This rejects the bare word 'class' in
+# prose (e.g. a comment "...used in this class and is...") capturing the following word.
+_CLASS = re.compile(
+    r"\b(?:class|struct|interface)\s+([A-Za-z_][A-Za-z0-9_]{2,})\b(?:\s+final\b)?\s*(?=[:{;])"
+)
 _TYPEDEF = re.compile(r"\btypedef\b[^;{]*?\b([A-Za-z_][A-Za-z0-9_]{2,})\s*;")
 _MACRO = re.compile(r"^\s*#\s*define\s+([A-Za-z_][A-Za-z0-9_]{2,})", re.M)
+_LINE_COMMENT = re.compile(r"//[^\n]*")
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+
+
+def _strip_comments(src: str) -> str:
+    """Remove // line comments and /* */ block comments so prose inside them can't be matched
+    as code. Block comments are replaced by a single space to preserve line/token boundaries."""
+    src = _BLOCK_COMMENT.sub(" ", src)
+    return _LINE_COMMENT.sub("", src)
 
 
 def extract_symbols(src: str) -> list:
-    """Class/struct/interface names, typedef names, and macro names (order-preserving dedup)."""
+    """Class/struct/interface names, typedef names, and macro names (order-preserving dedup).
+
+    Comments are stripped first, and class/struct/interface matches are anchored to actual
+    definitions/declarations (keyword + name + ``{``/``:``/``;``) so prose words after the
+    bare keyword 'class'/'struct'/'interface' are not captured as symbols.
+    """
+    src = _strip_comments(src)
     found = {}
     for rx in (_CLASS, _TYPEDEF, _MACRO):
         for name in rx.findall(src):
