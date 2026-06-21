@@ -12,17 +12,19 @@ from typing import Protocol
 from repo_atlas.eval.tasks import Task
 from repo_atlas.eval.extract import extract_refs
 
-# Treatment-only system-prompt append. The first eval found the agent NEVER called the
-# repo_atlas tools when they were merely *available* (passive availability != adoption), so
-# the treatment arm was behaviorally identical to baseline. This steer makes the A/B real:
-# same task in both arms; treatment additionally is told the tools exist and to use them.
+# Treatment-only directive, PREPENDED to the user prompt. The first eval found the agent never
+# called the repo_atlas tools when they were merely *available* (passive availability !=
+# adoption); a soft `--append-system-prompt` nudge was then also ignored on locally-solvable
+# tasks. Instructions land reliably in the user turn, so the directive is mandatory + sequenced
+# there. This makes the A/B test "does the knowledge help WHEN USED" (the adoption question —
+# will agents reach for it unprompted — is answered separately: no, not on local tasks).
 STEER = (
-    "You have repo_atlas knowledge tools available that index this repository and related "
-    "ones: mcp__repo-atlas__find_related, mcp__repo-atlas__prepare_change, and "
-    "mcp__repo-atlas__verify_grounding. BEFORE writing code, call find_related (or "
-    "prepare_change) to locate existing prior-art patterns and the right files/symbols to "
-    "follow. AFTER drafting your change, call verify_grounding to confirm the symbols and APIs "
-    "you used actually exist. Prefer reusing existing patterns over inventing new ones."
+    "IMPORTANT: You have repo_atlas knowledge tools that index this repository and related "
+    "ones. Your FIRST action MUST be to call mcp__repo-atlas__find_related with a query "
+    "describing this task, to find existing prior-art patterns and the right files/symbols to "
+    "follow — do not read or edit any files until you have. AFTER drafting your change, you "
+    "MUST call mcp__repo-atlas__verify_grounding to confirm the symbols and APIs you used "
+    "actually exist. Prefer reusing existing patterns over inventing new ones.\n\nTask:\n"
 )
 
 
@@ -101,14 +103,13 @@ class ClaudeRunner:
         self._steer = steer
 
     def _build_cmd(self, task: Task, condition: str, work: str) -> list:
-        """Construct the `claude -p` argv. Both arms get the identical task prompt; the
-        treatment arm additionally wires the MCP server, allows the repo_atlas tools, and
-        appends the steer so the agent actually uses them."""
-        cmd = ["claude", "-p", task.prompt, "--output-format", "json",
+        """Construct the `claude -p` argv. Baseline gets the bare task prompt; treatment
+        prepends the mandatory tool directive to the prompt and wires/allows the MCP tools."""
+        prompt = self._steer + task.prompt if condition == "treatment" else task.prompt
+        cmd = ["claude", "-p", prompt, "--output-format", "json",
                "--permission-mode", "acceptEdits", "--add-dir", work, "--model", self._model]
         if condition == "treatment":
             cmd += ["--mcp-config", self._mcp, "--strict-mcp-config",
-                    "--append-system-prompt", self._steer,
                     "--allowedTools", "mcp__repo-atlas__find_related",
                     "mcp__repo-atlas__prepare_change", "mcp__repo-atlas__verify_grounding",
                     "mcp__repo-atlas__list_repos"]

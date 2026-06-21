@@ -22,16 +22,18 @@ async def test_stub_runner_returns_canned():
 
 def test_build_cmd_treatment_steers_and_wires_mcp():
     r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
-    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do it", rubric="r")
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
     base = r._build_cmd(t, "baseline", "/work")
     treat = r._build_cmd(t, "treatment", "/work")
-    # baseline is plain: no steer, no MCP
-    assert "--append-system-prompt" not in base
+    base_prompt = base[base.index("-p") + 1]
+    treat_prompt = treat[treat.index("-p") + 1]
+    # baseline prompt is exactly the task; treatment PREPENDS a mandatory tool directive
+    assert base_prompt == "do the thing"
+    assert "do the thing" in treat_prompt                  # task text preserved
+    assert "find_related" in treat_prompt and "verify_grounding" in treat_prompt
+    assert "MUST" in treat_prompt                          # mandatory, not a soft nudge
+    # MCP wired/allowed only in treatment
     assert "--mcp-config" not in base
-    # treatment steers the agent AND names the tools so it actually calls them
-    assert "--append-system-prompt" in treat
-    steer = treat[treat.index("--append-system-prompt") + 1]
-    assert "find_related" in steer and "verify_grounding" in steer
     assert "--mcp-config" in treat and "--strict-mcp-config" in treat
     assert "mcp__repo-atlas__find_related" in treat
 
