@@ -153,14 +153,15 @@ Every improvement followed one loop:
 
 ## Part III — Evaluation Results
 
-### Timeline (one loop, four laps)
+### Timeline (one loop, five laps)
 
 | Lap | Instrument | Result | Lesson |
 |---|---|---|---|
 | 1 | Agentic A/B (N=6) | **null** — 0 tool calls; success 60%→60% | passive availability ≠ adoption |
 | 2 | Agentic A/B + forced adoption | success 67%→83% (**one** task flip on N=6); adoption 6/6 | underpowered; tasks too local |
 | 3 | **Offline retrieval+grounding** (pivot) | see below | tune the proxy deterministically |
-| 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end; the gap is task-*completion*, not retrieval or adoption |
+| 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end on *broad* prior-art; gap = task-*completion* + the judge can't verify |
+| 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -238,6 +239,36 @@ audio-rate, codec-notrack) had no headroom for the tool to add value. The worse 
 find_related points the agent at a *complex* existing implementation, it explores that larger
 surface (e.g. sketch 21→50 turns).
 
+### Grounding-based finding-bottleneck eval (2026-06-22, 10 tasks — 1 timeout)
+
+The close-the-loop run was blocked by an **unverifiable LLM judge** (it can't compile C/C++). So
+this lap replaced the judge with a **mechanically-checkable `GroundingScorer`**: success = the
+agent's diff references the **required real API** on tasks where finding that *non-obvious buried*
+API is the bottleneck (11 fresh tasks, curated via a 3-agent fan-out, every `required_api`
+grep-verified; e.g. `cgeGetDataAndChannelByFormat`, `convert_to_clbuffer`, `arraysize`). The claim
+is narrow and honest: *does repo_atlas make the agent ground in the right real API instead of
+reinventing/hallucinating* — not full task-correctness.
+
+**Headline:** grounded-success **20% → 20% (+0pp)**, **0/10 causal wins**, adoption 10/10.
+**Honesty check passes:** baseline grounded-success = **20%** (low) → the tasks really are
+finding-bottleneck, so the result is informative — and, being judge-free, it is the first
+**reliable** negative in the whole series.
+
+**Mechanism attributes it to retrieval *precision*:**
+
+| signal | value | reading |
+|---|---|---|
+| **surfaced** (find_related returned the API's defining file) | **30%** | the tool mostly did *not* surface the specific buried utility |
+| categories | retrieval-miss ×5, surfaced-ignored ×2, win ×1, regression ×1, no-effect ×1 | dominated by retrieval-miss |
+
+The offline work optimized *broad* prior-art retrieval (Recall@20 0.8 on "how do I do X"). But
+"find the one specific function I should call" is a **different, harder, symbol-level** retrieval
+problem the current `find_related` doesn't solve — it surfaces docs/files, not the precise symbol.
+On the 2 surfaced cases the agent still reinvented. And the forced "find_related first" directive
+sometimes *hurt*: `arraysize` went 2→24 turns (baseline wrote `sizeof/sizeof` immediately;
+treatment burned 24 turns searching, never found the macro, and hallucinated). **The next lever is
+symbol-precise retrieval for "use-the-existing-helper" intents** — the justified consume-side cycle.
+
 ---
 
 ## Part IV — Honest Assessment
@@ -260,21 +291,31 @@ surface (e.g. sketch 21→50 turns).
   payoff is therefore **most plausible where *finding* the pattern is the bottleneck** (large/
   unfamiliar codebases, "wire it up the standard way" tasks) and **least where *implementing* it
   correctly is the hard part** — which is what this task set happened to stress.
+- **Retrieval surfaces the right *file*, not the right *symbol*.** The judge-free grounding eval
+  (lap 5) is the reliable test: on "use this specific buried API" tasks, `find_related` surfaced the
+  required API's file only **30%** of the time, and grounded-success was **20%→20%** — repo_atlas
+  did not make the agent call the right real API more. So retrieval works for *broad* prior-art
+  ("how do I do X" → 90%) but not for *symbol-level precision* ("which exact function do I call" →
+  30%). Those are different retrieval problems; only the first is solved.
 - **Ground-truth circularity** is mitigated, not eliminated; read offline Success as "retrieval
   surfaces plausible prior art," not proof of usefulness.
 - **Measurement caveats:** the agentic "reused" metric is file-level and **undercounts** new-file-
-  follows-pattern reuse (proven here); hallucination/exploration deltas remain noisy. A sharper
-  verdict needs the reuse metric fixed (credit reference/subclass, not just file-edit).
-- **Small, single corpus** (3 repos, 15 offline cases, 10 agentic tasks, one embedding model) —
+  follows-pattern reuse (proven in lap 4); grounded-success (lap 5) fixed this for the find-intent
+  case. hallucination/exploration deltas remain noisy. The forced "find_related first" directive can
+  *hurt* (`arraysize` 2→24 turns) — adoption shouldn't be unconditionally forced.
+- **Small, single corpus** (3 repos, 15 offline + 21 agentic tasks, one embedding model) —
   directional, not statistically strong.
 
-**Net:** retrieval quality is validated end-to-end; the open question has *moved* from "does
-retrieval surface the right thing" (yes) to "does surfaced prior art change outcomes" (not on hard
-implementation tasks — the agent's completion ability, not the knowledge, is the limiter there).
+**Net:** we now have a **reliable, judge-free instrument** and two *valid* negatives. The open
+question has resolved into a precise next lever: broad prior-art retrieval is validated (90%), but
+**symbol-precise retrieval for "use-the-existing-helper" intents is the gap** (30% surfaced, +0
+grounded). That — not more task-completion difficulty — is where the demonstrable value is currently
+blocked, and it is the justified consume-side cycle.
 
-**Deferred follow-ups:** fix the file-level reuse metric (credit pattern-follow in new files);
-re-test on a task set where *finding* (not implementing) is the bottleneck; pool-aware re-ranking
-(the crowded base-class cases); grounding stratified sampling; a doc↔source relevance model; and the
+**Deferred follow-ups (now prioritized by lap 5):** (1) **symbol-precise retrieval** — surface the
+specific callable symbol, not just its file, for find-intent queries (the highest-value next step);
+(2) don't *unconditionally* force find_related (it can waste turns when the answer is trivial);
+pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
 *feed-back* stage of the produce→consume loop.
 
 ---
@@ -282,9 +323,10 @@ re-test on a task set where *finding* (not implementing) is the bottleneck; pool
 ## Appendix — Artifacts
 
 - Specs/plans: `docs/superpowers/specs/2026-06-21-*` and `docs/superpowers/plans/2026-06-21-*`
-  (retrieval eval, retrieval rebalance, multi-gold relevance, close-the-loop agentic eval).
+  (retrieval eval, retrieval rebalance, multi-gold relevance, close-the-loop agentic eval,
+  grounding-based finding-bottleneck eval).
 - Run setup: `/home/vinc/repo-atlas-eval-full/` (`atlas.db`, `atlas.toml`, `mcp.json`).
-- Scorecards: `offline-scorecard{,-rebalanced,-multigold}.md`, `closeloop-scorecard.md`;
-  diagnosis: `diagnosis.md`.
+- Scorecards: `offline-scorecard{,-rebalanced,-multigold}.md`, `closeloop-scorecard.md`,
+  `grounding-scorecard.md`; diagnosis: `diagnosis.md`.
 - Code: `repo_atlas/` (engine + tools) · `repo_atlas/eval/` (agentic + mechanism) ·
   `repo_atlas/eval/offline/` (retrieval + grounding).
