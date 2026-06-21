@@ -160,7 +160,7 @@ Every improvement followed one loop:
 | 1 | Agentic A/B (N=6) | **null** — 0 tool calls; success 60%→60% | passive availability ≠ adoption |
 | 2 | Agentic A/B + forced adoption | success 67%→83% (**one** task flip on N=6); adoption 6/6 | underpowered; tasks too local |
 | 3 | **Offline retrieval+grounding** (pivot) | see below | tune the proxy deterministically |
-| 4 | Close-the-loop agentic (mechanism-resolved) | *in progress* | does the proxy predict the outcome? |
+| 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end; the gap is task-*completion*, not retrieval or adoption |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -196,13 +196,47 @@ generator under-samples the typedef/macro/extern surface that is most prone to u
   gpuimage cases remain genuine retrieval difficulty (a correct base-class header ranked 19–27 in a
   31k-symbol pool) — isolated as the signal for deferred pool-aware re-ranking.
 
-### Close-the-loop validation (in progress)
+### Close-the-loop validation (2026-06-21, 10 tasks — 1 timed out)
 
 11 fresh harder *intra-repo prior-art* tasks (e.g. "add a LUT color-grade following the existing
 lookup filter," "fix the no-video-track null-deref following the existing error-bail pattern"),
-baseline vs improved-treatment, mechanism-resolved (Part II.4). Adoption confirmed (every treatment
-session calls the tools). **Results pending — this section will be filled with the causal-win
-count, the difficulty self-check, and the category histogram when the run completes.**
+baseline vs improved-treatment, mechanism-resolved (Part II.4). One task timed out (900s) and was
+skipped → N=10.
+
+**Headline:** task success **50% → 50% (+0pp)**, **0/10 causal wins**. Adoption **10/10** (forced
+directive works). Difficulty self-check: baseline success **50%** — squarely in the 30–60% target,
+so the tasks were well-calibrated (real headroom on the 5 failing tasks; this is *not* a
+no-headroom artifact).
+
+**Mechanism — where the chain breaks:**
+
+| signal | value | reading |
+|---|---|---|
+| **surfaced** (find_related returned the gold prior-art) | **90%** | retrieval works end-to-end — the offline gains translate to a *live* agent |
+| reused (edited the prior-art *file*) | 40% | **undercount** — see below |
+| causal-wins | 0/10 | treatment never solved a task baseline failed |
+| category histogram | `surfaced-ignored` ×6, `no-effect` ×3, `retrieval-miss` ×1 | — |
+
+**The "reused" metric undercounts — corrected reading.** Inspecting the diffs, all 6
+`surfaced-ignored` agents *did* use the surfaced prior art — by creating a **new file** that
+follows it (`cgeLUTFilter` ← `cgeLookupFilter`; `cl_box_filter_handler` + a new `.cl` kernel ←
+`cl_gauss_handler`; `cl_dehaze_handler` ← `cl_defog_dcp_handler`; etc.). Since "add a new X
+following Y" is correctly solved by a *new* file, the file-level reuse metric scores these `False`
+even though the pattern was followed (the blind spot the spec flagged). So the real chain is
+**surfaced (90%) → followed-the-pattern (high) → but still failed the task**.
+
+**Honest verdict.** This is a **valid negative on outcomes** (unlike lap 1's null-by-construction):
+adoption was real, retrieval surfaced the right prior art 90% of the time, and the tasks had
+headroom — yet treatment did not lift task success. The mechanism *attributes* it precisely: the
+bottleneck is **not retrieval and not adoption** — it is **task completion**. On the 5 well-
+calibrated hard tasks where baseline failed (a working OpenCL kernel + handler, a correct native
+LUT filter with registration), the agent found and followed the right pattern and *still* produced
+a solution the judge rejected — on both arms. Surfacing the pattern is necessary but, for these
+hard implementation tasks, not sufficient. The already-passing tasks (jni-version, negation-blend,
+audio-rate, codec-notrack) had no headroom for the tool to add value. The worse secondary metrics
+(hallucination +0.14, exploration +7 turns) are the known-noisy ones — and partly real: after
+find_related points the agent at a *complex* existing implementation, it explores that larger
+surface (e.g. sketch 21→50 turns).
 
 ---
 
@@ -214,18 +248,34 @@ count, the difficulty self-check, and the category histogram when the run comple
 - **Two measured product improvements** (rebalance, multi-gold) with traceable causes, each built
   through spec → plan → reviewed implementation.
 - **Grounding is good**; the earlier "hallucination" alarm was an artifact.
+- **Retrieval works end-to-end.** The close-the-loop run showed `find_related` surfaces the right
+  prior art for a *live* agent **90%** of the time, and the agent then follows that pattern (in a
+  new file) — so the offline retrieval gains are real, not an artifact of curated queries.
 
-**What is not yet proven (be candid):**
-- That improved retrieval **changes a real coding agent's outcomes** — the close-the-loop run is
-  exactly this test, and it is still in flight. Until it lands, repo_atlas is a well-engineered,
-  well-measured *foundation* whose end-user payoff is *inferred, not demonstrated*.
+**What is now known but unfavorable (be candid):**
+- **Surfacing prior art did not lift task outcomes** on the hard close-the-loop set (+0pp, 0 causal
+  wins, baseline well-calibrated at 50%). The mechanism attributes this precisely: the bottleneck
+  is **task completion, not retrieval or adoption** — on the hard tasks the agent found and followed
+  the right pattern and still produced a solution the judge rejected, on both arms. repo_atlas's
+  payoff is therefore **most plausible where *finding* the pattern is the bottleneck** (large/
+  unfamiliar codebases, "wire it up the standard way" tasks) and **least where *implementing* it
+  correctly is the hard part** — which is what this task set happened to stress.
 - **Ground-truth circularity** is mitigated, not eliminated; read offline Success as "retrieval
   surfaces plausible prior art," not proof of usefulness.
-- **Small, single corpus** (3 repos, 15 offline cases, one embedding model) — directional, not
-  statistically strong.
+- **Measurement caveats:** the agentic "reused" metric is file-level and **undercounts** new-file-
+  follows-pattern reuse (proven here); hallucination/exploration deltas remain noisy. A sharper
+  verdict needs the reuse metric fixed (credit reference/subclass, not just file-edit).
+- **Small, single corpus** (3 repos, 15 offline cases, 10 agentic tasks, one embedding model) —
+  directional, not statistically strong.
 
-**Deferred follow-ups:** pool-aware re-ranking (the crowded base-class cases), grounding stratified
-sampling, a doc↔source relevance model, and the *feed-back* stage of the produce→consume loop.
+**Net:** retrieval quality is validated end-to-end; the open question has *moved* from "does
+retrieval surface the right thing" (yes) to "does surfaced prior art change outcomes" (not on hard
+implementation tasks — the agent's completion ability, not the knowledge, is the limiter there).
+
+**Deferred follow-ups:** fix the file-level reuse metric (credit pattern-follow in new files);
+re-test on a task set where *finding* (not implementing) is the bottleneck; pool-aware re-ranking
+(the crowded base-class cases); grounding stratified sampling; a doc↔source relevance model; and the
+*feed-back* stage of the produce→consume loop.
 
 ---
 
