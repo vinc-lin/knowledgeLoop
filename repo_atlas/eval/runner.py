@@ -64,6 +64,61 @@ def _atlas_calls_for_session(session_id: str) -> int:
     return _count_atlas_in_transcript(hits[0]) if hits else 0
 
 
+def _collect_files(obj, out: set) -> None:
+    """Recursively collect every 'file' string value in a (possibly JSON-string-encoded)
+    find_related result envelope ({result:{docs:[...],symbols:[...]}})."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if k == "file" and isinstance(v, str):
+                out.add(v)
+            else:
+                _collect_files(v, out)
+    elif isinstance(obj, list):
+        for x in obj:
+            _collect_files(x, out)
+    elif isinstance(obj, str):
+        s = obj.strip()
+        if s.startswith("{") or s.startswith("["):
+            try:
+                _collect_files(json.loads(s), out)
+            except json.JSONDecodeError:
+                pass
+
+
+def _find_related_files_for_session(session_id: str) -> tuple:
+    """From a session transcript: (find_related query strings, files returned by find_related)."""
+    if not session_id:
+        return [], []
+    hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl"))
+    if not hits:
+        return [], []
+    queries, use_ids, results, files = [], set(), {}, set()
+    for line in open(hits[0]):
+        if "find_related" not in line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        content = (obj.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        for b in content:
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "tool_use" and b.get("name") == "mcp__repo-atlas__find_related":
+                q = (b.get("input") or {}).get("query")
+                if q:
+                    queries.append(q)
+                use_ids.add(b.get("id"))
+            elif b.get("type") == "tool_result":
+                results[b.get("tool_use_id")] = b.get("content")
+    for uid in use_ids:
+        if uid in results:
+            _collect_files(results[uid], files)
+    return queries, sorted(files)
+
+
 @dataclass
 class RunResult:
     condition: str                  # 'baseline' | 'treatment'
@@ -74,6 +129,8 @@ class RunResult:
     raw: dict = field(default_factory=dict)
     diff: str = ""
     atlas_calls: int = 0            # repo_atlas MCP tool calls observed in the session
+    find_related_queries: list = field(default_factory=list)
+    retrieval_surfaced_gold: bool = False
 
 
 class AgentRunner(Protocol):
@@ -141,4 +198,9 @@ class ClaudeRunner:
         # Adoption telemetry: count repo_atlas tool calls from the persisted session transcript.
         session_id = raw.get("session_id", "") if isinstance(raw, dict) else ""
         atlas_calls = _atlas_calls_for_session(session_id)
-        return RunResult(condition, symbols, files, tool_calls, tokens, raw, diff, atlas_calls)
+        queries, surfaced = [], False
+        if condition == "treatment":
+            queries, fr_files = _find_related_files_for_session(session_id)
+            surfaced = any(pf in set(fr_files) for pf in task.prior_art_files)
+        return RunResult(condition, symbols, files, tool_calls, tokens, raw, diff, atlas_calls,
+                         find_related_queries=queries, retrieval_surfaced_gold=surfaced)
