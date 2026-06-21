@@ -1,0 +1,57 @@
+# repo_atlas/eval/offline/cases/retrieval/curated.toml
+[[case]]
+id = "cur-gpuimage-filter-base"
+repo = "android-gpuimage-plus"
+query = "base class / interface that all CGE image filters implement"
+gold_files = ["library/src/main/jni/cge/common/cgeImageFilter.h"]
+gold_symbols = ["CGEImageFilterInterface"]
+
+[[case]]
+id = "cur-gpuimage-image-handler"
+repo = "android-gpuimage-plus"
+query = "CGE image handler that owns the filter chain and framebuffers"
+gold_files = ["library/src/main/jni/cge/common/cgeImageHandler.h"]
+
+[[case]]
+id = "cur-gpuimage-jni-bridge"
+repo = "android-gpuimage-plus"
+query = "extern C JNI entry points exporting the CGE native library to Java"
+gold_files = ["library/src/main/jni/cge/common/cgeGlobal.h"]
+
+[[case]]
+id = "cur-libxcam-image-handler-base"
+repo = "libxcam"
+query = "base class for OpenCL image handlers in the ocl module"
+gold_files = ["modules/ocl/cl_image_handler.h"]
+gold_symbols = ["CLImageHandler"]
+
+[[case]]
+id = "cur-libxcam-3a-processor"
+repo = "libxcam"
+query = "OpenCL 3A image processor pipeline that chains color conversion and adjustment handlers"
+gold_files = ["modules/ocl/cl_3a_image_processor.h"]
+
+[[case]]
+id = "cur-libxcam-context"
+repo = "libxcam"
+query = "OpenCL context wrapper used to create kernels and command queues"
+gold_files = ["modules/ocl/cl_context.h"]
+
+[[case]]
+id = "cur-ndk-hello-jni"
+repo = "ndk-samples"
+query = "hello-jni native method registration via JNI_OnLoad / RegisterNatives"
+gold_files = ["hello-jni/app/src/main/cpp/hello-jni.cpp"]
+gold_symbols = ["JNI_OnLoad"]
+
+[[case]]
+id = "cur-ndk-native-codec"
+repo = "ndk-samples"
+query = "native AMediaCodec decode loop handling output buffers and format changes"
+gold_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
+
+[[case]]
+id = "cur-ndk-native-audio"
+repo = "ndk-samples"
+query = "OpenSL ES native audio engine creation and buffer queue playback"
+gold_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]

@@ -1,0 +1,46 @@
+# repo_atlas/eval/offline/cases/retrieval/tasks.toml
+[[case]]
+id = "task-gpuimage-add-sepia"
+repo = "android-gpuimage-plus"
+query = "Add a sepia-tone image filter to the CGE native filter library, following the existing filter pattern used by the other cge*Adjust filters."
+gold_files = ["library/src/main/jni/cge/common/cgeImageFilter.h"]
+gold_symbols = ["CGEImageFilterInterface"]
+source = "task:gpuimage-add-sepia"
+
+[[case]]
+id = "task-gpuimage-fix-jni"
+repo = "android-gpuimage-plus"
+query = "A native method is failing to bind from Java to C++. Fix the JNI registration in the CGE native bridge so the Java layer can call into the native filter code."
+gold_files = ["library/src/main/jni/cge/common/cgeGlobal.h"]
+source = "task:gpuimage-fix-jni-registration"
+
+[[case]]
+id = "task-libxcam-add-handler"
+repo = "libxcam"
+query = "Add a new OpenCL image handler to libxcam that applies a simple gamma adjustment, following the existing CLImageHandler pattern in the ocl module."
+gold_files = ["modules/ocl/cl_image_handler.h"]
+gold_symbols = ["CLImageHandler"]
+source = "task:libxcam-add-handler"
+
+[[case]]
+id = "task-libxcam-fix-csc"
+repo = "libxcam"
+query = "The color-space-conversion handler in libxcam produces incorrect output for a specific input format. Fix the CSC image handler."
+gold_files = ["modules/ocl/cl_3a_image_processor.h"]
+gold_symbols = ["CLCscImageHandler"]
+source = "task:libxcam-fix-csc"
+
+[[case]]
+id = "task-ndk-add-native-method"
+repo = "ndk-samples"
+query = "Add a second native method to the hello-jni sample that returns the device's ABI string, registered the same way as the existing native method."
+gold_files = ["hello-jni/app/src/main/cpp/hello-jni.cpp"]
+gold_symbols = ["JNI_OnLoad"]
+source = "task:ndk-add-native-method"
+
+[[case]]
+id = "task-ndk-fix-codec-crash"
+repo = "ndk-samples"
+query = "The native-codec sample crashes when the media format changes mid-stream. Fix the native codec handling so a format change is handled safely."
+gold_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
+source = "task:ndk-fix-codec-crash"
