@@ -1,0 +1,7 @@
+id = "cl-gpuimage-lut"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a CGE native filter that color-grades an image by mapping each pixel through a square lookup-table (LUT) image, following the existing lookup-table filter implementation in the CGE filter library."
+rubric = "A correct solution adds a filter that loads a LUT texture and samples it per-pixel, following the existing cgeLookupFilter pattern."
+prior_art_files = ["library/src/main/jni/cge/filters/cgeLookupFilter.h", "library/src/main/jni/cge/filters/cgeLookupFilter.cpp"]
+expected_files = ["library/src/main/jni/cge/filters/cgeLookupFilter.h"]

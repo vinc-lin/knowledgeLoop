@@ -1,0 +1,7 @@
+id = "cl-gpuimage-sketch"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a CGE native filter that produces a grayscale pencil-sketch effect using an edge/convolution kernel, following the existing emboss/edge filter implementation."
+rubric = "A correct solution adds a convolution-kernel filter following the existing cgeEmbossFilter pattern."
+prior_art_files = ["library/src/main/jni/cge/filters/cgeEmbossFilter.h", "library/src/main/jni/cge/filters/cgeEmbossFilter.cpp"]
+expected_files = ["library/src/main/jni/cge/filters/cgeEmbossFilter.h"]

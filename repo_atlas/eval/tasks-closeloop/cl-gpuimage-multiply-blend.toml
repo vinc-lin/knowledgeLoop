@@ -1,0 +1,7 @@
+id = "cl-gpuimage-multiply-blend"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a 'multiply' blend mode that combines two textures to the CGE native blend filter, following the existing blend filter implementation."
+rubric = "A correct solution extends/follows the existing cgeBlendFilter implementation to add a multiply blend mode."
+prior_art_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.h", "library/src/main/jni/cge/filters/cgeBlendFilter.cpp"]
+expected_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.h"]

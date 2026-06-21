@@ -1,0 +1,7 @@
+id = "cl-ndk-codec-eos"
+kind = "bugfix"
+repo = "ndk-samples"
+prompt = "Make the native-codec sample stop cleanly at end-of-stream, following the existing output-buffer and format-change handling in the decode loop."
+rubric = "A correct solution handles the end-of-stream flag in the native-codec decode loop following the existing buffer/format handling."
+prior_art_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
+expected_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]

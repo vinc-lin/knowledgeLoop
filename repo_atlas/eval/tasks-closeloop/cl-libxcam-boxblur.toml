@@ -1,0 +1,7 @@
+id = "cl-libxcam-boxblur"
+kind = "dev"
+repo = "libxcam"
+prompt = "Add an OpenCL image handler to libxcam that applies a box blur, following the existing Gaussian blur handler in the ocl module."
+rubric = "A correct solution adds an OpenCL handler following the existing cl_gauss_handler pattern."
+prior_art_files = ["modules/ocl/cl_gauss_handler.h", "modules/ocl/cl_gauss_handler.cpp"]
+expected_files = ["modules/ocl/cl_gauss_handler.h"]

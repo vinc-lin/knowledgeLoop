@@ -1,0 +1,7 @@
+id = "cl-gpuimage-tonecurve"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a CGE native filter that remaps image tones via a user-supplied control-point curve (tone curve), following the existing curve-adjustment filter."
+rubric = "A correct solution adds a tone-curve filter following the existing cgeCurveAdjust pattern."
+prior_art_files = ["library/src/main/jni/cge/filters/cgeCurveAdjust.h", "library/src/main/jni/cge/filters/cgeCurveAdjust.cpp"]
+expected_files = ["library/src/main/jni/cge/filters/cgeCurveAdjust.h"]

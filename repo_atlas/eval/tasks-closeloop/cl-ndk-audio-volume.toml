@@ -1,0 +1,7 @@
+id = "cl-ndk-audio-volume"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "Add runtime volume control to the native-audio sample's playback, acquiring the OpenSL ES volume interface the same way the sample acquires its other interfaces."
+rubric = "A correct solution acquires and uses the SLVolumeItf following the existing OpenSL ES interface-acquisition pattern in the native-audio sample."
+prior_art_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]
+expected_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]

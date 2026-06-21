@@ -1,0 +1,7 @@
+id = "cl-gpuimage-jni-version"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Expose a new native method that returns the CGE library version string to the Java layer, registered the same way as the existing native methods."
+rubric = "A correct solution registers a new JNI method following the existing native-method registration in the CGE native bridge."
+prior_art_files = ["library/src/main/jni/interface/cgeNativeLibrary.cpp", "library/src/main/jni/interface/cgeNativeLibrary.h"]
+expected_files = ["library/src/main/jni/interface/cgeNativeLibrary.cpp"]

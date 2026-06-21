@@ -1,0 +1,7 @@
+id = "cl-libxcam-defog"
+kind = "dev"
+repo = "libxcam"
+prompt = "Add an OpenCL image handler that removes atmospheric haze, following the existing dehazing (defog) handler."
+rubric = "A correct solution adds an OpenCL handler following the existing cl_defog_dcp_handler pattern."
+prior_art_files = ["modules/ocl/cl_defog_dcp_handler.h", "modules/ocl/cl_defog_dcp_handler.cpp"]
+expected_files = ["modules/ocl/cl_defog_dcp_handler.h"]
