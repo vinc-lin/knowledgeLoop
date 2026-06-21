@@ -1,0 +1,7 @@
+id = "cl-gpuimage-negation-blend"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Add a 'negation' blend mode (result = 1 - |1 - src - dst|) to the CGE native blend filter, following the existing blend-mode implementations (shader function, blend-mode enum, and name mapping) in the CGE filter library."
+rubric = "A correct solution adds a new negation blend mode following the existing cgeBlendFilter pattern: a blend() shader string, a matching CGETextureBlendMode enum entry, an entry in the shader-enum table, and a name mapping in getBlendModeByName."
+prior_art_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.h", "library/src/main/jni/cge/filters/cgeBlendFilter.cpp"]
+expected_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.cpp"]

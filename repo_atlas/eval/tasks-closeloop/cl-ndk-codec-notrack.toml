@@ -1,0 +1,7 @@
+id = "cl-ndk-codec-notrack"
+kind = "bugfix"
+repo = "ndk-samples"
+prompt = "Fix the native-codec sample so it fails gracefully when the input file has no decodable video track: today the codec stays NULL and the decode loop dereferences it. Bail out the same way the function already returns JNI_FALSE on its other setup errors."
+rubric = "A correct solution detects the no-video-track case (codec still NULL after the track loop) and returns JNI_FALSE / avoids starting the looper, following the existing JNI_FALSE error-return pattern in CreateStreamingMediaPlayer rather than crashing in doCodecWork."
+prior_art_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
+expected_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]

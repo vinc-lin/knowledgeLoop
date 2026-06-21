@@ -1,0 +1,7 @@
+id = "cl-ndk-audio-rate"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "Add runtime playback-speed control to the native-audio sample by acquiring the OpenSL ES playback-rate interface (SL_IID_PLAYBACKRATE / SLPlaybackRateItf) on a player, the same way the sample acquires its other interfaces, and exposing a setPlaybackRate native method to Java."
+rubric = "A correct solution requests SL_IID_PLAYBACKRATE when creating a player, acquires the SLPlaybackRateItf via GetInterface, and calls SetRate following the existing OpenSL ES interface-acquisition pattern; the playback-rate interface is not already acquired in the sample."
+prior_art_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]
+expected_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]

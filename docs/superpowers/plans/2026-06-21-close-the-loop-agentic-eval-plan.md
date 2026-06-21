@@ -441,14 +441,14 @@ prior_art_files = ["library/src/main/jni/cge/filters/cgeCurveAdjust.h", "library
 expected_files = ["library/src/main/jni/cge/filters/cgeCurveAdjust.h"]
 ```
 ```toml
-# repo_atlas/eval/tasks-closeloop/cl-gpuimage-multiply-blend.toml
-id = "cl-gpuimage-multiply-blend"
+# repo_atlas/eval/tasks-closeloop/cl-gpuimage-negation-blend.toml
+id = "cl-gpuimage-negation-blend"
 kind = "dev"
 repo = "android-gpuimage-plus"
-prompt = "Add a 'multiply' blend mode that combines two textures to the CGE native blend filter, following the existing blend filter implementation."
-rubric = "A correct solution extends/follows the existing cgeBlendFilter implementation to add a multiply blend mode."
+prompt = "Add a 'negation' blend mode (result = 1 - |1 - src - dst|) to the CGE native blend filter, following the existing blend-mode implementations (shader function, blend-mode enum, and name mapping) in the CGE filter library."
+rubric = "A correct solution adds a new negation blend mode following the existing cgeBlendFilter pattern: a blend() shader string, a matching CGETextureBlendMode enum entry, an entry in the shader-enum table, and a name mapping in getBlendModeByName."
 prior_art_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.h", "library/src/main/jni/cge/filters/cgeBlendFilter.cpp"]
-expected_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.h"]
+expected_files = ["library/src/main/jni/cge/filters/cgeBlendFilter.cpp"]
 ```
 ```toml
 # repo_atlas/eval/tasks-closeloop/cl-gpuimage-jni-version.toml
@@ -507,22 +507,22 @@ expected_files = ["modules/ocl/cl_defog_dcp_handler.h"]
 - [ ] **Step 3: Create the 2 ndk tasks**
 
 ```toml
-# repo_atlas/eval/tasks-closeloop/cl-ndk-audio-volume.toml
-id = "cl-ndk-audio-volume"
+# repo_atlas/eval/tasks-closeloop/cl-ndk-audio-rate.toml
+id = "cl-ndk-audio-rate"
 kind = "dev"
 repo = "ndk-samples"
-prompt = "Add runtime volume control to the native-audio sample's playback, acquiring the OpenSL ES volume interface the same way the sample acquires its other interfaces."
-rubric = "A correct solution acquires and uses the SLVolumeItf following the existing OpenSL ES interface-acquisition pattern in the native-audio sample."
+prompt = "Add runtime playback-speed control to the native-audio sample by acquiring the OpenSL ES playback-rate interface (SL_IID_PLAYBACKRATE / SLPlaybackRateItf) on a player, the same way the sample acquires its other interfaces, and exposing a setPlaybackRate native method to Java."
+rubric = "A correct solution requests SL_IID_PLAYBACKRATE when creating a player, acquires the SLPlaybackRateItf via GetInterface, and calls SetRate following the existing OpenSL ES interface-acquisition pattern; the playback-rate interface is not already acquired in the sample."
 prior_art_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]
 expected_files = ["native-audio/app/src/main/cpp/native-audio-jni.cpp"]
 ```
 ```toml
-# repo_atlas/eval/tasks-closeloop/cl-ndk-codec-eos.toml
-id = "cl-ndk-codec-eos"
+# repo_atlas/eval/tasks-closeloop/cl-ndk-codec-notrack.toml
+id = "cl-ndk-codec-notrack"
 kind = "bugfix"
 repo = "ndk-samples"
-prompt = "Make the native-codec sample stop cleanly at end-of-stream, following the existing output-buffer and format-change handling in the decode loop."
-rubric = "A correct solution handles the end-of-stream flag in the native-codec decode loop following the existing buffer/format handling."
+prompt = "Fix the native-codec sample so it fails gracefully when the input file has no decodable video track: today the codec stays NULL and the decode loop dereferences it. Bail out the same way the function already returns JNI_FALSE on its other setup errors."
+rubric = "A correct solution detects the no-video-track case (codec still NULL after the track loop) and returns JNI_FALSE / avoids starting the looper, following the existing JNI_FALSE error-return pattern in CreateStreamingMediaPlayer rather than crashing in doCodecWork."
 prior_art_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
 expected_files = ["native-codec/app/src/main/cpp/native-codec-jni.cpp"]
 ```
