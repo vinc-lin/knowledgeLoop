@@ -16,7 +16,10 @@ class OfflineRetriever:
 
     def ground(self, repo: str, symbols: list) -> dict:
         import repo_atlas.tools as _t
-        return _t.verify_grounding(self._store, repo, list(symbols))
+        env = _t.verify_grounding(self._store, repo, list(symbols))
+        # verify_grounding wraps the {sym: {...}} mapping in a contract envelope;
+        # unwrap result so grounding_scores can look symbols up at the top level.
+        return env.get("result", env) if isinstance(env, dict) else env
 
 
 class StubRetriever:
