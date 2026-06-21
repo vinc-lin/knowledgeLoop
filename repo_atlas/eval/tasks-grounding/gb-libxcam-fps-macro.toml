@@ -1,0 +1,8 @@
+id = "gb-libxcam-fps-macro"
+kind = "dev"
+repo = "libxcam"
+prompt = "In the GStreamer src/filter element's per-frame output path I want a lightweight built-in way to print the current and running-average frames-per-second every N frames to stdout for debugging, without adding my own timing state. Emit an FPS log line tagged with this element's name once every 30 frames."
+rubric = "Correct iff the solution uses the existing XCAM_STATIC_FPS_CALCULATION macro rather than rolling its own gettimeofday-based counter."
+required_apis = ["XCAM_STATIC_FPS_CALCULATION"]
+prior_art_files = ["xcore/xcam_obj_debug.h"]
+expected_files = ["xcore/xcam_obj_debug.h"]

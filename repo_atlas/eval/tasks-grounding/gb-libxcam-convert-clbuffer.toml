@@ -1,0 +1,8 @@
+id = "gb-libxcam-convert-clbuffer"
+kind = "dev"
+repo = "libxcam"
+prompt = "I'm writing an OpenCL image handler. The execute path hands me a generic SmartPtr<VideoBuffer> for the input frame, but to bind it as a kernel argument I need it as a SmartPtr<CLBuffer> so the underlying cl_mem is accessible. Turn the incoming VideoBuffer into the CLBuffer that backs it."
+rubric = "Correct iff the solution calls the existing convert_to_clbuffer helper rather than dynamic_cast-ing or rebuilding a cl_mem by hand."
+required_apis = ["convert_to_clbuffer"]
+prior_art_files = ["modules/ocl/cl_utils.cpp"]
+expected_files = ["modules/ocl/cl_utils.cpp"]

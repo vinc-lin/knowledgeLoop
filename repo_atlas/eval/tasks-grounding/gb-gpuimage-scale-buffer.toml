@@ -1,0 +1,8 @@
+id = "gb-gpuimage-scale-buffer"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Before uploading a decoded RGBA image to an OpenGL texture in the CGE image handler, large source images must be downscaled so they fit within the GPU's maximum texture dimensions. Add a step that, given the raw pixel buffer plus its width/height and channel count, produces a newly-allocated downscaled copy (updating width/height in place) when the image exceeds the max texture size, and leaves it untouched otherwise."
+rubric = "Correct iff the solution calls the existing cgeGetScaledBufferInSize helper rather than reinventing a resampling loop or fabricating a name."
+required_apis = ["cgeGetScaledBufferInSize"]
+prior_art_files = ["library/src/main/jni/cge/common/cgeGLFunctions.cpp"]
+expected_files = ["library/src/main/jni/cge/common/cgeGLFunctions.cpp"]

@@ -1,0 +1,8 @@
+id = "gb-libxcam-planar-info"
+kind = "dev"
+repo = "libxcam"
+prompt = "Inside a handler I have a VideoBuffer for an NV12 frame and need to walk its luma (Y) plane and then its chroma (UV) plane to copy/process pixels. For each plane I need its width, height, byte offset into the buffer, and pitch (stride). Get those per-plane geometry values for plane index 0 and plane index 1 from the buffer's VideoBufferInfo."
+rubric = "Correct iff the solution calls VideoBufferInfo::get_planar_info rather than reading strides/offsets by hand or fabricating a name."
+required_apis = ["get_planar_info"]
+prior_art_files = ["xcore/video_buffer.cpp"]
+expected_files = ["xcore/video_buffer.cpp"]

@@ -1,0 +1,8 @@
+id = "gb-ndk-sensormanager"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "In the accelerometer sensor-graph native sample (sensor-graph/accelerometer/src/main/cpp/sensorgraph.cpp), the code obtains an ASensorManager to read the accelerometer. Implement/restore the helper that returns a valid ASensorManager* instance in a way that works across Android API levels: it must prefer the package-scoped instance accessor when present and fall back gracefully otherwise, instead of calling the plain deprecated global accessor directly. Wire the sensor init path to use it."
+rubric = "Correct iff the solution calls AcquireASensorManagerInstance rather than ASensorManager_getInstance() directly."
+required_apis = ["AcquireASensorManagerInstance"]
+prior_art_files = ["sensor-graph/accelerometer/src/main/cpp/sensorgraph.cpp"]
+expected_files = ["sensor-graph/accelerometer/src/main/cpp/sensorgraph.cpp"]

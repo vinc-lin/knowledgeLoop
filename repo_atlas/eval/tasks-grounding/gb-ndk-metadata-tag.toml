@@ -1,0 +1,8 @@
+id = "gb-ndk-metadata-tag"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "In the camera-utils module (camera/camera-utils), when logging or debugging ACameraMetadata entries you have a raw acamera_metadata_tag_t value (e.g. ACAMERA_LENS_FACING) and need a human-readable name for it to put in a log line. Add a log statement that prints the tag's readable name alongside its hex value, using the module's existing facility for converting a metadata tag enum to its string name."
+rubric = "Correct iff the solution calls the existing GetTagStr rather than hand-writing a switch or fabricating an NDK call."
+required_apis = ["GetTagStr"]
+prior_art_files = ["camera/camera-utils/src/main/cpp/camera_utils.cpp"]
+expected_files = ["camera/camera-utils/src/main/cpp/camera_utils.cpp"]

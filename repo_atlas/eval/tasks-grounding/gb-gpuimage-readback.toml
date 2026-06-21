@@ -1,0 +1,8 @@
+id = "gb-gpuimage-readback"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "After running filters through a CGEImageHandler, copy the processed image out of the GPU framebuffer back into a caller-provided CPU buffer in a requested pixel format (e.g. RGBA 8-bit), handling the framebuffer bind, glFinish, pack-alignment and (on ES 3.0) the PBO read path. Return whether the readback succeeded."
+rubric = "Correct iff the solution calls the existing CGEImageHandler::getOutputBufferData rather than writing its own glReadPixels or fabricating a name."
+required_apis = ["getOutputBufferData"]
+prior_art_files = ["library/src/main/jni/cge/common/cgeImageHandler.cpp"]
+expected_files = ["library/src/main/jni/cge/common/cgeImageHandler.cpp"]

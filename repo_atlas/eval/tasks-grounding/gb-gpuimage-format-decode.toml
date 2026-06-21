@@ -1,0 +1,8 @@
+id = "gb-gpuimage-format-decode"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Given a CGEBufferFormat enum (e.g. CGE_FORMAT_RGBA_INT8, CGE_FORMAT_RGB_FLOAT32), resolve the corresponding OpenGL data type (GL_UNSIGNED_BYTE / GL_UNSIGNED_SHORT / GL_FLOAT), the channel/pixel format (GL_RGB / GL_RGBA / ...), and the channel count, writing them out so callers can use them for glReadPixels / glTexImage2D and buffer-size math."
+rubric = "Correct iff the solution calls the existing cgeGetDataAndChannelByFormat decoder rather than hand-rolling a switch or fabricating a name."
+required_apis = ["cgeGetDataAndChannelByFormat"]
+prior_art_files = ["library/src/main/jni/cge/common/cgeCommonDefine.cpp"]
+expected_files = ["library/src/main/jni/cge/common/cgeCommonDefine.cpp"]

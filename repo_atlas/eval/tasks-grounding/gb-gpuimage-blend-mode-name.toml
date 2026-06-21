@@ -1,0 +1,8 @@
+id = "gb-gpuimage-blend-mode-name"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "Given a CGETextureBlendMode enum value (e.g. CGE_BLEND_OVERLAY, CGE_BLEND_SOFTLIGHT), return the canonical lowercase string name of that blend mode ('overlay', 'softlight', ...) for logging/serialization, with an option to return the localized name. Return null for an out-of-range mode."
+rubric = "Correct iff the solution calls the existing cgeGetBlendModeName rather than hand-rolling a switch/table or fabricating a name."
+required_apis = ["cgeGetBlendModeName"]
+prior_art_files = ["library/src/main/jni/cge/common/cgeCommonDefine.cpp"]
+expected_files = ["library/src/main/jni/cge/common/cgeCommonDefine.cpp"]
