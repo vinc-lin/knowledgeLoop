@@ -8,19 +8,21 @@ from repo_atlas.eval.offline.harness import run_retrieval, run_grounding
 @pytest.mark.asyncio
 async def test_run_retrieval_aggregates_and_perrepo():
     cases = [
-        RetrievalCase("c1", "r1", "q1", ("a.h",), ("A",)),
+        RetrievalCase("c1", "r1", "q1", ("a.h", "alt.h"), ("A",)),   # 2 acceptable golds
         RetrievalCase("c2", "r2", "q2", ("b.h",)),
     ]
     stub = StubRetriever(hits_by_query={
-        "q1": [{"file": "a.h", "name": "A", "qualified_name": None}],     # rank-1 hit
+        "q1": [{"file": "a.h", "name": "A", "qualified_name": None}],     # hits an alternative
         "q2": [{"file": "x.h", "name": "X", "qualified_name": None}],     # miss
     })
     rep = await run_retrieval(cases, stub, ks=(5,))
     assert rep.overall["n"] == 2
-    assert rep.overall["recall@5"] == 0.5            # c1 hit, c2 miss
-    assert rep.per_repo["r1"]["recall@5"] == 1.0
-    assert rep.per_repo["r2"]["recall@5"] == 0.0
-    assert rep.overall["sym_recall@5"] == 1.0        # only c1 has gold_symbols, and it hit
+    assert rep.overall["success@5"] == 0.5           # c1 hit (any-of), c2 miss
+    assert rep.per_repo["r1"]["success@5"] == 1.0
+    assert rep.per_repo["r2"]["success@5"] == 0.0
+    assert rep.overall["recall@5"] == 0.25           # secondary: c1 found 1 of 2 golds, c2 0
+    assert rep.overall["sym_success@5"] == 1.0       # c1 symbol hit
+    assert rep.overall["median_golds"] == 1.5        # golds: [2, 1] -> median 1.5
 
 
 @pytest.mark.asyncio

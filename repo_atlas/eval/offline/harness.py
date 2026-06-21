@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import statistics
 
 from repo_atlas.eval.offline import metrics
 
@@ -23,15 +24,18 @@ class GroundingReport:
 
 def _agg_retrieval(rows: list, ks) -> dict:
     out = {"n": len(rows)}
-    keys = ([f"recall@{k}" for k in ks] + [f"hit@{k}" for k in ks]
+    keys = ([f"success@{k}" for k in ks] + [f"recall@{k}" for k in ks]
             + [f"ndcg@{k}" for k in ks] + ["mrr"])
     for key in keys:
         vals = [r[key] for r in rows if key in r]
         out[key] = sum(vals) / len(vals) if vals else 0.0
-    sym_key = f"sym_recall@{max(ks)}"
+    sym_key = f"sym_success@{max(ks)}"
     sym_vals = [r[sym_key] for r in rows if sym_key in r]
     if sym_vals:
         out[sym_key] = sum(sym_vals) / len(sym_vals)
+    golds = [r["n_golds"] for r in rows if "n_golds" in r]
+    if golds:
+        out["median_golds"] = statistics.median(golds)
     return out
 
 
@@ -46,14 +50,14 @@ async def run_retrieval(cases: list, retriever, ks=(5, 10, 20)) -> RetrievalRepo
             continue
         ranked_files = [h.get("file") for h in hits]
         gold_f = set(c.gold_files)
-        row = {"id": c.id, "repo": c.repo, "source": c.source}
+        row = {"id": c.id, "repo": c.repo, "source": c.source, "n_golds": len(gold_f)}
         for k in ks:
-            row[f"recall@{k}"] = metrics.recall_at_k(ranked_files, gold_f, k)
-            row[f"hit@{k}"] = metrics.hit_rate_at_k(ranked_files, gold_f, k)
+            row[f"success@{k}"] = metrics.success_at_k(ranked_files, gold_f, k)
+            row[f"recall@{k}"] = metrics.recall_at_k(ranked_files, gold_f, k)   # secondary coverage
             row[f"ndcg@{k}"] = metrics.ndcg_at_k(ranked_files, gold_f, k)
         row["mrr"] = metrics.mrr(ranked_files, gold_f)
         if c.gold_symbols:
-            row[f"sym_recall@{kmax}"] = metrics.symbol_recall_at_k(hits, c.gold_symbols, kmax)
+            row[f"sym_success@{kmax}"] = metrics.symbol_success_at_k(hits, c.gold_symbols, kmax)
         per_case.append(row)
     repos = sorted({r["repo"] for r in per_case})
     per_repo = {rp: _agg_retrieval([r for r in per_case if r["repo"] == rp], ks) for rp in repos}
