@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from repo_atlas.eval.causal import classify, CATEGORIES
+
 
 @dataclass
 class TaskScore:
@@ -12,6 +14,8 @@ class TaskScore:
     reuse_recall: float
     exploration_cost: int
     atlas_calls: int = 0       # repo_atlas tool calls (treatment adoption signal)
+    retrieval_surfaced_gold: bool = False
+    reused_prior_art: bool = False
 
 
 @dataclass
@@ -20,6 +24,7 @@ class PairResult:
     baseline: TaskScore
     treatment: TaskScore
     regressed: bool
+    category: str = ""
 
 
 @dataclass
@@ -35,7 +40,10 @@ def make_pair(task_id: str, baseline: TaskScore, treatment: TaskScore) -> PairRe
         regressed = baseline.success and not treatment.success
     else:
         regressed = treatment.hallucination_rate > baseline.hallucination_rate
-    return PairResult(task_id, baseline, treatment, regressed)
+    category = classify(b=baseline.success, t=treatment.success,
+                        surfaced=treatment.retrieval_surfaced_gold,
+                        reused=treatment.reused_prior_art, adopted=treatment.atlas_calls > 0)
+    return PairResult(task_id, baseline, treatment, regressed, category)
 
 
 def _mean(xs):
@@ -57,6 +65,10 @@ def aggregate(pairs: list) -> Scorecard:
         # is only interpretable if adoption > 0 (else treatment == baseline by construction).
         "adoption_mean": _mean([s.atlas_calls for s in t]),
         "adoption_runs": sum(1 for s in t if s.atlas_calls > 0),
+        "causal_wins": sum(1 for p in pairs if p.category == "causal-win"),
+        "categories": {c: sum(1 for p in pairs if p.category == c) for c in CATEGORIES},
+        "surfaced_rate": _mean([1.0 if s.retrieval_surfaced_gold else 0.0 for s in t]),
+        "reused_rate": _mean([1.0 if s.reused_prior_art else 0.0 for s in t]),
     }
     summary["success_delta"] = summary["success_treatment"] - summary["success_baseline"]
     return Scorecard(pairs=pairs, summary=summary)

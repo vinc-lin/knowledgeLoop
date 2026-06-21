@@ -39,3 +39,17 @@ def test_aggregate_reports_treatment_adoption():
     s = sc.summary
     assert s["adoption_mean"] == 1.5     # (3 + 0) / 2
     assert s["adoption_runs"] == 1       # 1 of 2 treatment runs called a tool
+
+
+def test_aggregate_classifies_and_counts_mechanism():
+    from repo_atlas.eval.aggregate import TaskScore, make_pair, aggregate
+    base = TaskScore("t1", "baseline", success=False, hallucination_rate=0.0,
+                     reuse_recall=0.0, exploration_cost=10)
+    treat = TaskScore("t1", "treatment", success=True, hallucination_rate=0.0,
+                      reuse_recall=0.0, exploration_cost=8, atlas_calls=2,
+                      retrieval_surfaced_gold=True, reused_prior_art=True)
+    sc = aggregate([make_pair("t1", base, treat)])
+    assert sc.pairs[0].category == "causal-win"
+    assert sc.summary["causal_wins"] == 1
+    assert sc.summary["categories"]["causal-win"] == 1
+    assert sc.summary["surfaced_rate"] == 1.0 and sc.summary["reused_rate"] == 1.0

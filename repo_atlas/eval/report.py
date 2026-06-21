@@ -31,6 +31,18 @@ def render_scorecard(scorecard) -> str:
             f"{b.reuse_recall:.2f}→{t.reuse_recall:.2f} | "
             f"{b.exploration_cost}→{t.exploration_cost} | {t.atlas_calls} | "
             f"{'YES' if p.regressed else ''} |")
+    cats = s.get("categories", {})
+    lines += ["\n## Mechanism (causal trace)",
+              f"**Causal wins (surfaced + reused + beat baseline): {s.get('causal_wins', 0)}/{s['n']}**  "
+              f"· surfaced {s.get('surfaced_rate', 0)*100:.0f}% · reused {s.get('reused_rate', 0)*100:.0f}%\n",
+              "| category | count |", "|---|---|"]
+    lines += [f"| {c} | {n} |" for c, n in cats.items() if n]
+    lines += ["\n| task | success b→t | surfaced | reused | category |",
+              "|---|---|---|---|---|"]
+    for p in scorecard.pairs:
+        lines.append(f"| {p.task_id} | {p.baseline.success}→{p.treatment.success} | "
+                     f"{'Y' if p.treatment.retrieval_surfaced_gold else '·'} | "
+                     f"{'Y' if p.treatment.reused_prior_art else '·'} | {p.category} |")
     useful = s["success_delta"] > 0 or (s["hallucination_delta"] < 0 and s["reuse_delta"] > 0)
     lines.append(f"\n## Verdict\nrepo_atlas is **{'useful' if useful else 'NOT clearly useful'}** "
                  f"on this task set (primary = task success).")
