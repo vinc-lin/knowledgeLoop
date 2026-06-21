@@ -65,8 +65,12 @@ def _atlas_calls_for_session(session_id: str) -> int:
 
 
 def _collect_files(obj, out: set) -> None:
-    """Recursively collect every 'file' string value in a (possibly JSON-string-encoded)
-    find_related result envelope ({result:{docs:[...],symbols:[...]}})."""
+    """Recursively collect every 'file' string value in a find_related result.
+
+    Real find_related results are a flat list — `{"result": [{..., "file": ...}]}` — and the
+    tool_result `content` is double-wrapped as a list of `{"type":"text","text":"<JSON string>"}`
+    blocks, so the JSON-string-in-text-block path below is load-bearing. We recurse generically,
+    so this also handles the bucketed `{result:{docs:[...],symbols:[...]}}` shape."""
     if isinstance(obj, dict):
         for k, v in obj.items():
             if k == "file" and isinstance(v, str):
@@ -85,34 +89,45 @@ def _collect_files(obj, out: set) -> None:
                 pass
 
 
-def _find_related_files_for_session(session_id: str) -> tuple:
-    """From a session transcript: (find_related query strings, files returned by find_related)."""
+def _find_related_files_for_session(session_id: str) -> tuple[list, list]:
+    """From a session transcript: (find_related query strings, files returned by find_related).
+
+    NB: do NOT pre-filter lines on the substring "find_related" — real Claude Code transcripts
+    carry the returned files in a tool_result line that references the call only via tool_use_id
+    (the string "find_related" never appears on it), so such a filter drops every result and
+    `files` stays empty. The per-session transcripts are small, so scanning all lines is fine."""
     if not session_id:
         return [], []
     hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl"))
     if not hits:
         return [], []
+    try:
+        fh = open(hits[0])
+    except OSError:
+        return [], []
     queries, use_ids, results, files = [], set(), {}, set()
-    for line in open(hits[0]):
-        if "find_related" not in line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        content = (obj.get("message") or {}).get("content")
-        if not isinstance(content, list):
-            continue
-        for b in content:
-            if not isinstance(b, dict):
+    with fh:
+        for line in fh:
+            if '"tool_use"' not in line and '"tool_result"' not in line:
                 continue
-            if b.get("type") == "tool_use" and b.get("name") == "mcp__repo-atlas__find_related":
-                q = (b.get("input") or {}).get("query")
-                if q:
-                    queries.append(q)
-                use_ids.add(b.get("id"))
-            elif b.get("type") == "tool_result":
-                results[b.get("tool_use_id")] = b.get("content")
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            content = (obj.get("message") or {}).get("content")
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if not isinstance(b, dict):
+                    continue
+                if (b.get("type") == "tool_use"
+                        and b.get("name") == "mcp__repo-atlas__find_related"):
+                    q = (b.get("input") or {}).get("query")
+                    if q:
+                        queries.append(q)
+                    use_ids.add(b.get("id"))
+                elif b.get("type") == "tool_result":
+                    results[b.get("tool_use_id")] = b.get("content")
     for uid in use_ids:
         if uid in results:
             _collect_files(results[uid], files)
