@@ -17,7 +17,8 @@ async def _score(task, run, *, judge, exists_fn) -> TaskScore:
         exploration_cost=metrics.exploration_cost(run.tool_calls),
         atlas_calls=run.atlas_calls,
         retrieval_surfaced_gold=run.retrieval_surfaced_gold,
-        reused_prior_art=any(pf in run.touched_files for pf in task.prior_art_files))
+        reused_prior_art=(any(pf in run.touched_files for pf in task.prior_art_files)
+                          or any(api in run.referenced_symbols for api in task.required_apis)))
 
 
 async def run_pair(task, runner, judge, exists_fn: Callable[[str], bool]):

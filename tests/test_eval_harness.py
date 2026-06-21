@@ -41,3 +41,16 @@ async def test_run_eval_skips_a_failing_task():
     sc = await run_eval(tasks, BoomRunner(), StubJudge({"ok": True}), lambda s: True)
     assert sc.summary["n"] == 1                         # "boom" skipped, "ok" kept
     assert sc.pairs[0].task_id == "ok"
+
+
+@pytest.mark.asyncio
+async def test_score_credits_required_api_reference_as_reused():
+    from repo_atlas.eval.harness import _score
+    from repo_atlas.eval.tasks import Task
+    from repo_atlas.eval.runner import RunResult
+    from repo_atlas.eval.grounding_scorer import GroundingScorer
+    task = Task(id="t", kind="dev", repo="r", prompt="p", rubric="x", required_apis=["cgeFoo"])
+    run = RunResult("treatment", referenced_symbols=["cgeFoo"], touched_files=[])
+    score = await _score(task, run, judge=GroundingScorer(), exists_fn=lambda s: True)
+    assert score.success is True            # grounded
+    assert score.reused_prior_art is True   # referencing the required api counts as reuse/grounded

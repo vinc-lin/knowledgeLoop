@@ -30,6 +30,8 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--out", default="eval-scorecard.md", help="scorecard output path")
     ev.add_argument("--limit", type=int, default=0, help="limit number of tasks (0 = all)")
     ev.add_argument("--mcp-config", help="MCP config json pointing at repo-atlas (treatment)")
+    ev.add_argument("--scorer", choices=["judge", "grounding"], default="judge",
+                    help="grounding = mechanically check the diff references required_apis (no judge)")
     eo = sub.add_parser("eval-offline",
                         help="deterministic retrieval+grounding eval (no agent)")
     eo.add_argument("--cases", default="repo_atlas/eval/offline/cases",
@@ -83,8 +85,12 @@ def _run_eval(args) -> int:
     registry = {e.name: e.repo_path
                 for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
     runner = ClaudeRunner(registry, args.mcp_config or "")
-    judge = GatewayJudge(cfg.base_url, cfg.api_key,
-                         os.environ.get("REPO_ATLAS_JUDGE_MODEL", "deepseek-chat"))
+    if args.scorer == "grounding":
+        from repo_atlas.eval.grounding_scorer import GroundingScorer
+        judge = GroundingScorer()
+    else:
+        judge = GatewayJudge(cfg.base_url, cfg.api_key,
+                             os.environ.get("REPO_ATLAS_JUDGE_MODEL", "deepseek-chat"))
     oracles = {name: store_exists_fn(store, name) for name in registry}
 
     sc = asyncio.run(run_eval(
