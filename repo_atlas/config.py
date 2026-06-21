@@ -11,6 +11,7 @@ class AtlasConfig:
     api_key: str
     embed_model: str
     db_path: str
+    symbol_ratio: float = 0.5
 
 
 def _codewiki_creds() -> tuple[Optional[str], Optional[str]]:
@@ -26,6 +27,14 @@ def _codewiki_creds() -> tuple[Optional[str], Optional[str]]:
         return None, None
 
 
+def _parse_ratio(raw) -> float:
+    """Clamp REPO_ATLAS_SYMBOL_RATIO to [0,1]; fall back to 0.5 on missing/garbage."""
+    try:
+        return min(1.0, max(0.0, float(raw)))
+    except (TypeError, ValueError):
+        return 0.5
+
+
 def load_config(environ: Optional[dict] = None) -> AtlasConfig:
     env = environ if environ is not None else os.environ
     cw_base, cw_key = (None, None)
@@ -38,4 +47,5 @@ def load_config(environ: Optional[dict] = None) -> AtlasConfig:
         api_key=api_key or cw_key or "",
         embed_model=env.get("REPO_ATLAS_EMBED_MODEL", ""),
         db_path=env.get("REPO_ATLAS_DB", os.path.expanduser("~/.repo_atlas/atlas.db")),
+        symbol_ratio=_parse_ratio(env.get("REPO_ATLAS_SYMBOL_RATIO")),
     )
