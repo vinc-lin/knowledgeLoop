@@ -9,21 +9,26 @@ def _f(x) -> str:
 def _retrieval_section(rep, ks=(5, 10, 20)) -> list:
     if rep is None:
         return ["## Retrieval (find_related)\n_no retrieval layer run._\n"]
-    lines = [f"## Retrieval (find_related) — cases: {rep.overall['n']}\n",
-             "| scope | Recall@5 | Recall@10 | Recall@20 | Hit@10 | MRR | nDCG@10 |",
-             "|---|---|---|---|---|---|---|"]
+    ks = tuple(ks)
+    kmax = max(ks)
+    recall_cols = [f"Recall@{k}" for k in ks]
+    header = "| scope | " + " | ".join(recall_cols + [f"Hit@{kmax}", "MRR", f"nDCG@{kmax}"]) + " |"
+    sep = "|---" * (len(recall_cols) + 4) + "|"
+    lines = [f"## Retrieval (find_related) — cases: {rep.overall['n']}\n", header, sep]
 
     def row(name, agg):
-        return (f"| {name} | {_f(agg.get('recall@5', 0))} | {_f(agg.get('recall@10', 0))} | "
-                f"{_f(agg.get('recall@20', 0))} | {_f(agg.get('hit@10', 0))} | "
-                f"{_f(agg.get('mrr', 0))} | {_f(agg.get('ndcg@10', 0))} |")
+        cells = [name]
+        cells += [_f(agg.get(f"recall@{k}", 0)) for k in ks]
+        cells += [_f(agg.get(f"hit@{kmax}", 0)), _f(agg.get("mrr", 0)),
+                  _f(agg.get(f"ndcg@{kmax}", 0))]
+        return "| " + " | ".join(cells) + " |"
 
     lines.append(row("overall", rep.overall))
     for repo in sorted(rep.per_repo):
         lines.append(row(repo, rep.per_repo[repo]))
-    sym = rep.overall.get(f"sym_recall@{max(ks)}")
+    sym = rep.overall.get(f"sym_recall@{kmax}")
     if sym is not None:
-        lines.append(f"\n(secondary) symbol-level Recall@{max(ks)} overall: {_f(sym)}")
+        lines.append(f"\n(secondary) symbol-level Recall@{kmax} overall: {_f(sym)}")
     return lines
 
 
@@ -45,9 +50,10 @@ def _grounding_section(rep) -> list:
 
 
 def render_offline_scorecard(retrieval_report, grounding_report, *,
-                             embed_model: str = "", db_path: str = "") -> str:
+                             embed_model: str = "", db_path: str = "",
+                             ks=(5, 10, 20)) -> str:
     head = ["# repo_atlas offline eval — retrieval + grounding\n"]
     if embed_model or db_path:
         head.append(f"_embed_model={embed_model or '?'} · db={db_path or '?'}_\n")
-    return "\n".join(head + _retrieval_section(retrieval_report)
+    return "\n".join(head + _retrieval_section(retrieval_report, ks)
                      + ["\n"] + _grounding_section(grounding_report)) + "\n"
