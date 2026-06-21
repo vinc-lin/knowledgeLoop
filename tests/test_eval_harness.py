@@ -10,8 +10,8 @@ async def test_run_eval_end_to_end_with_stubs():
     task = Task(id="t1", kind="dev", repo="r1", prompt="p", rubric="x",
                 expected_symbols=["cgeImageFilter"], expected_files=["a.h"])
     runner = StubRunner({
-        ("t1", "baseline"): RunResult("baseline", ["madeUp"], ["z.cpp"], 11, 200, {}, ""),
-        ("t1", "treatment"): RunResult("treatment", ["cgeImageFilter"], ["a.h"], 4, 90, {}, ""),
+        ("t1", "baseline"): RunResult("baseline", ["madeUp"], ["z.cpp"], 11, 200, {}, "", 0),
+        ("t1", "treatment"): RunResult("treatment", ["cgeImageFilter"], ["a.h"], 4, 90, {}, "", 2),
     })
     judge = StubJudge({"t1": True})
     real = {"cgeImageFilter"}
@@ -22,6 +22,10 @@ async def test_run_eval_end_to_end_with_stubs():
     assert p.baseline.hallucination_rate == 1.0
     assert p.treatment.reuse_recall == 1.0
     assert p.treatment.exploration_cost == 4
+    # adoption telemetry must thread through from RunResult -> TaskScore -> scorecard
+    assert p.treatment.atlas_calls == 2
+    assert sc.summary["adoption_mean"] == 2.0
+    assert sc.summary["adoption_runs"] == 1
 
 
 @pytest.mark.asyncio

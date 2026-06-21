@@ -11,6 +11,7 @@ class TaskScore:
     hallucination_rate: float
     reuse_recall: float
     exploration_cost: int
+    atlas_calls: int = 0       # repo_atlas tool calls (treatment adoption signal)
 
 
 @dataclass
@@ -52,6 +53,10 @@ def aggregate(pairs: list) -> Scorecard:
         "reuse_delta": _mean([s.reuse_recall for s in t]) - _mean([s.reuse_recall for s in b]),
         "exploration_delta": _mean([s.exploration_cost for s in t]) - _mean([s.exploration_cost for s in b]),
         "regressed_count": sum(1 for p in pairs if p.regressed),
+        # Adoption: did the treatment agent actually CALL the repo_atlas tools? A null result
+        # is only interpretable if adoption > 0 (else treatment == baseline by construction).
+        "adoption_mean": _mean([s.atlas_calls for s in t]),
+        "adoption_runs": sum(1 for s in t if s.atlas_calls > 0),
     }
     summary["success_delta"] = summary["success_treatment"] - summary["success_baseline"]
     return Scorecard(pairs=pairs, summary=summary)

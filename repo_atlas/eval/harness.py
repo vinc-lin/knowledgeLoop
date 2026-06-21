@@ -14,7 +14,8 @@ async def _score(task, run, *, judge, exists_fn) -> TaskScore:
         reuse_recall=metrics.reuse_recall(
             run.referenced_symbols, run.touched_files,
             expected_symbols=task.expected_symbols, expected_files=task.expected_files),
-        exploration_cost=metrics.exploration_cost(run.tool_calls))
+        exploration_cost=metrics.exploration_cost(run.tool_calls),
+        atlas_calls=run.atlas_calls)
 
 
 async def run_pair(task, runner, judge, exists_fn: Callable[[str], bool]):

@@ -27,3 +27,15 @@ def test_aggregate_summary():
     assert s["hallucination_delta"] == -0.5    # treatment - baseline (lower is better)
     assert s["reuse_delta"] == 1.0
     assert s["regressed_count"] == 0
+
+
+def test_aggregate_reports_treatment_adoption():
+    # adoption = did the treatment agent actually CALL the repo_atlas tools?
+    base1 = TaskScore("t1", "baseline", False, 0.5, 0.0, 10, 0)
+    treat1 = TaskScore("t1", "treatment", True, 0.1, 1.0, 12, 3)   # used tools 3x
+    base2 = TaskScore("t2", "baseline", True, 0.0, 0.0, 5, 0)
+    treat2 = TaskScore("t2", "treatment", True, 0.0, 0.0, 6, 0)    # never used tools
+    sc = aggregate([make_pair("t1", base1, treat1), make_pair("t2", base2, treat2)])
+    s = sc.summary
+    assert s["adoption_mean"] == 1.5     # (3 + 0) / 2
+    assert s["adoption_runs"] == 1       # 1 of 2 treatment runs called a tool
