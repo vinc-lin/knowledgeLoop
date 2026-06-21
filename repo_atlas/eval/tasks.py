@@ -15,6 +15,7 @@ class Task:
     rubric: str
     expected_symbols: list = field(default_factory=list)
     expected_files: list = field(default_factory=list)
+    prior_art_files: list = field(default_factory=list)
 
 
 def load_tasks(directory: str) -> list[Task]:
@@ -26,5 +27,6 @@ def load_tasks(directory: str) -> list[Task]:
             id=d["id"], kind=d["kind"], repo=d["repo"], prompt=d["prompt"],
             rubric=d["rubric"],
             expected_symbols=list(d.get("expected_symbols", [])),
-            expected_files=list(d.get("expected_files", []))))
+            expected_files=list(d.get("expected_files", [])),
+            prior_art_files=list(d.get("prior_art_files", []))))
     return tasks
