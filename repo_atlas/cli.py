@@ -30,6 +30,13 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--out", default="eval-scorecard.md", help="scorecard output path")
     ev.add_argument("--limit", type=int, default=0, help="limit number of tasks (0 = all)")
     ev.add_argument("--mcp-config", help="MCP config json pointing at repo-atlas (treatment)")
+    eo = sub.add_parser("eval-offline",
+                        help="deterministic retrieval+grounding eval (no agent)")
+    eo.add_argument("--cases", default="repo_atlas/eval/offline/cases",
+                    help="dir with retrieval/ and grounding/ subdirs of case .toml")
+    eo.add_argument("--layer", choices=["retrieval", "grounding", "all"], default="all")
+    eo.add_argument("--k", default="5,10,20", help="comma-separated cutoffs")
+    eo.add_argument("--out", default="offline-scorecard.md")
     return p
 
 
@@ -91,12 +98,47 @@ def _run_eval(args) -> int:
     return 0
 
 
+def _run_eval_offline(args) -> int:
+    import asyncio as _aio
+
+    from repo_atlas.config import load_config
+    from repo_atlas.store import Store
+    from repo_atlas.embed import GatewayEmbedder
+    from repo_atlas.eval.offline.cases import load_retrieval_cases, load_grounding_cases
+    from repo_atlas.eval.offline.retriever import OfflineRetriever
+    from repo_atlas.eval.offline.harness import run_retrieval, run_grounding
+    from repo_atlas.eval.offline.report import render_offline_scorecard
+
+    cfg = load_config(os.environ)
+    ks = tuple(int(x) for x in args.k.split(","))
+    store = Store(cfg.db_path)
+    embedder = GatewayEmbedder(cfg.base_url, cfg.api_key, cfg.embed_model)
+    retriever = OfflineRetriever(store, embedder)
+
+    rret = gret = None
+    if args.layer in ("retrieval", "all"):
+        rcases = load_retrieval_cases(os.path.join(args.cases, "retrieval"))
+        rret = _aio.run(run_retrieval(rcases, retriever, ks=ks))
+    if args.layer in ("grounding", "all"):
+        gcases = load_grounding_cases(os.path.join(args.cases, "grounding"))
+        gret = run_grounding(gcases, retriever)
+
+    md = render_offline_scorecard(rret, gret, embed_model=cfg.embed_model, db_path=cfg.db_path)
+    with open(args.out, "w") as fh:
+        fh.write(md)
+    print(md)
+    print(f"\nwrote {args.out}")
+    return 0
+
+
 def main(argv: Optional[list] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.cmd == "index":
         return _run_index(args)
     if args.cmd == "eval":
         return _run_eval(args)
+    if args.cmd == "eval-offline":
+        return _run_eval_offline(args)
     from repo_atlas.server import main as serve_main
     serve_main()
     return 0
