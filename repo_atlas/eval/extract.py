@@ -39,12 +39,16 @@ def _is_symbol_ref(tok: str, nextch: str) -> bool:
     return False
 
 
-def extract_refs(diff: str) -> tuple[list[str], list[str]]:
+def extract_refs(diff: str, gold_tokens=()) -> tuple[list[str], list[str]]:
     """From a unified diff: (referenced symbol-like identifiers in added lines, touched files).
 
-    Order-preserving dedup for both. See `_is_symbol_ref` for what counts as a symbol."""
+    `gold_tokens` (e.g. a task's required_apis/expected_symbols) are matched EXACTLY as whole
+    words on added lines and included even when the `_is_symbol_ref` heuristic would drop them
+    (a lowercase, non-call API). Qualified tokens are bared (`ns::foo` -> `foo`). This stops
+    GroundingScorer from registering false misses on extractor noise. Order-preserving dedup."""
     files: dict[str, None] = {}
     symbols: dict[str, None] = {}
+    added: list[str] = []
     for line in diff.splitlines():
         fm = _FILE.match(line)
         if fm:
@@ -52,8 +56,16 @@ def extract_refs(diff: str) -> tuple[list[str], list[str]]:
             continue
         if line.startswith("+") and not line.startswith("+++"):
             body = line[1:]
+            added.append(body)
             for m in _IDENT.finditer(body):
                 nxt = body[m.end():m.end() + 1]
                 if _is_symbol_ref(m.group(), nxt):
                     symbols[m.group()] = None
+    for g in gold_tokens:
+        bare = g.split("::")[-1]
+        if bare in symbols:
+            continue
+        pat = re.compile(r"\b" + re.escape(bare) + r"\b")
+        if any(pat.search(b) for b in added):
+            symbols[bare] = None
     return list(symbols), list(files)
