@@ -39,6 +39,15 @@ def build_parser() -> argparse.ArgumentParser:
     eo.add_argument("--layer", choices=["retrieval", "grounding", "all"], default="all")
     eo.add_argument("--k", default="5,10,20", help="comma-separated cutoffs")
     eo.add_argument("--out", default="offline-scorecard.md")
+    ea = sub.add_parser("eval-arms",
+                        help="multi-arm agentic eval + proxy↔outcome correlation")
+    ea.add_argument("--tasks", required=True, help="dir of task .toml files")
+    ea.add_argument("--out", default="eval-arms-scorecard.md")
+    ea.add_argument("--limit", type=int, default=0, help="limit number of tasks (0 = all)")
+    ea.add_argument("--mcp-config", help="MCP config json (optional/mandatory-call arms)")
+    ea.add_argument("--arms", default="control,optional,forced-inject,mandatory-call",
+                    help="comma-separated arm names")
+    ea.add_argument("--proxy-k", type=int, default=10, help="symbol-retrieval cutoff for the proxy")
     return p
 
 
@@ -104,6 +113,50 @@ def _run_eval(args) -> int:
     return 0
 
 
+def _run_eval_arms(args) -> int:
+    from repo_atlas.config import load_config
+    from repo_atlas.store import Store
+    from repo_atlas.embed import GatewayEmbedder
+    from repo_atlas.eval.tasks import load_tasks
+    from repo_atlas.eval.runner import ClaudeRunner
+    from repo_atlas.eval.grounding_scorer import GroundingScorer
+    from repo_atlas.eval.oracle import store_exists_fn
+    from repo_atlas.eval.harness import run_multi_eval
+    from repo_atlas.eval.correlation import compute_proxy, correlate
+    from repo_atlas.eval.offline.retriever import OfflineRetriever
+    from repo_atlas.eval.report import render_multi_scorecard
+    from repo_atlas.registry import load_registry
+
+    cfg = load_config(os.environ)
+    tasks = load_tasks(args.tasks)
+    if args.limit:
+        tasks = tasks[:args.limit]
+    if not tasks:
+        print(f"repo_atlas eval-arms: no tasks in {args.tasks}")
+        return 2
+    arms = [a.strip() for a in args.arms.split(",") if a.strip()]
+    store = Store(cfg.db_path)
+    embedder = GatewayEmbedder(cfg.base_url, cfg.api_key, cfg.embed_model)
+    registry = {e.name: e.repo_path
+                for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
+    retriever = OfflineRetriever(store, embedder)
+    runner = ClaudeRunner(registry, args.mcp_config or "", retriever=retriever)
+    oracles = {name: store_exists_fn(store, name, repo_path=registry[name]) for name in registry}
+
+    def exists(sym: str) -> bool:
+        return any(o(sym) for o in oracles.values())
+
+    sc = asyncio.run(run_multi_eval(tasks, runner, arms, GroundingScorer(), exists))
+    proxy = asyncio.run(compute_proxy(tasks, retriever, k=args.proxy_k))
+    corrs = [correlate(proxy, sc, a) for a in arms]
+    md = render_multi_scorecard(sc, corrs)
+    with open(args.out, "w") as fh:
+        fh.write(md)
+    print(md)
+    print(f"\nwrote {args.out}")
+    return 0
+
+
 def _run_eval_offline(args) -> int:
     import asyncio as _aio
 
@@ -145,6 +198,8 @@ def main(argv: Optional[list] = None) -> int:
         return _run_eval(args)
     if args.cmd == "eval-offline":
         return _run_eval_offline(args)
+    if args.cmd == "eval-arms":
+        return _run_eval_arms(args)
     from repo_atlas.server import main as serve_main
     serve_main()
     return 0
