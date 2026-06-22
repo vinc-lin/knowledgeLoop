@@ -198,11 +198,14 @@ class ClaudeRunner:
     git repo so the agent's change can be captured as a diff.
     """
     def __init__(self, repo_paths: dict, mcp_config_path: str,
-                 model: str = "claude-sonnet-4-6", steer: str = STEER):
+                 model: str = "claude-sonnet-4-6", steer: str = STEER,
+                 retriever=None, inject_k: int = 5):
         self._repo_paths = repo_paths           # repo name -> source path
         self._mcp = mcp_config_path
         self._model = model
         self._steer = steer
+        self._retriever = retriever             # OfflineRetriever-like; used by forced-inject
+        self._inject_k = inject_k
 
     def _build_cmd(self, task: Task, condition: str, work: str, inject_text: str = "") -> list:
         """Construct the `claude -p` argv for an arm. control/baseline: bare prompt, no MCP.
@@ -224,9 +227,19 @@ class ClaudeRunner:
                     "mcp__repo-atlas__list_repos"]
         return cmd
 
+    async def _inject_text(self, task: Task) -> str:
+        """Forced-inject arm: retrieve prior art via the production path and format it. Returns
+        "" when no retriever is wired (the arm then degrades to a bare-prompt control)."""
+        if self._retriever is None:
+            return ""
+        units = await self._retriever.retrieve(task.prompt, task.repo, self._inject_k)
+        return format_injection(units, max_k=self._inject_k)
+
     async def run(self, task: Task, *, condition: str) -> RunResult:
         src = self._repo_paths[task.repo]
         work = tempfile.mkdtemp(prefix=f"eval-{task.id}-{condition}-")
+        wire_mcp, mode = ARMS[condition]
+        inject = await self._inject_text(task) if mode == "inject" else ""
         try:
             # src (config) + work (mkdtemp) are trusted, not user input -> shell pipe is safe.
             subprocess.run(f"git -C {src} archive HEAD | tar -x -C {work}", shell=True, check=True)
@@ -235,7 +248,7 @@ class ClaudeRunner:
             subprocess.run(["git", "-C", work, "-c", "user.email=e@x", "-c", "user.name=e",
                             "commit", "-qm", "base"], check=True)
 
-            proc = subprocess.run(self._build_cmd(task, condition, work), cwd=work,
+            proc = subprocess.run(self._build_cmd(task, condition, work, inject), cwd=work,
                                   capture_output=True, text=True, timeout=900)
             raw = json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
             # NOTE: agent-driven `git commit` inside the run would evade this working-tree diff.
@@ -243,7 +256,8 @@ class ClaudeRunner:
                                   capture_output=True, text=True).stdout
         finally:
             shutil.rmtree(work, ignore_errors=True)
-        symbols, files = extract_refs(diff)
+        gold = list(task.required_apis) + list(task.expected_symbols)
+        symbols, files = extract_refs(diff, gold_tokens=gold)
         usage = raw.get("usage", {}) if isinstance(raw, dict) else {}
         tokens = int(usage.get("output_tokens", 0)) + int(usage.get("input_tokens", 0))
         tool_calls = int(raw.get("num_turns", 0)) if isinstance(raw, dict) else 0  # proxy
@@ -251,7 +265,7 @@ class ClaudeRunner:
         session_id = raw.get("session_id", "") if isinstance(raw, dict) else ""
         atlas_calls = _atlas_calls_for_session(session_id)
         queries, surfaced = [], False
-        if condition == "treatment":
+        if wire_mcp:
             queries, fr_files = _find_related_files_for_session(session_id)
             surfaced = any(pf in set(fr_files) for pf in task.prior_art_files)
         return RunResult(condition, symbols, files, tool_calls, tokens, raw, diff, atlas_calls,

@@ -96,3 +96,21 @@ def test_format_injection_caps_and_headers():
 
 def test_format_injection_empty_is_blank():
     assert format_injection([]) == ""
+
+
+@pytest.mark.asyncio
+async def test_inject_text_uses_retriever_for_forced_arm():
+    from repo_atlas.eval.offline.retriever import StubRetriever
+    sr = StubRetriever(hits_by_query={
+        "do the thing": [{"name": "cgeFoo", "file": "a.cpp", "text": "foo helper"}]})
+    r = ClaudeRunner({"gpuimage": "/x"}, "/m", retriever=sr)
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
+    txt = await r._inject_text(t)
+    assert txt.startswith("Relevant prior art") and "cgeFoo" in txt
+
+
+@pytest.mark.asyncio
+async def test_inject_text_empty_without_retriever():
+    r = ClaudeRunner({"gpuimage": "/x"}, "/m")             # no retriever wired
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="p", rubric="r")
+    assert await r._inject_text(t) == ""
