@@ -77,6 +77,7 @@ testing recipe: [`docs/SETUP.md`](./docs/SETUP.md).
 |---|---|
 | [Vision](./docs/INTRODUCTION.md) | Why KnowledgeLoop, the close-the-loop idea, modules & stages (start here) |
 | [Setup & Run](./docs/SETUP.md) | Install, generate, launch the MCP server, use it in Claude Code |
+| [Applying to a new repo](./docs/applying-to-a-new-repo.md) | Task-oriented runbook: take any repo through produce → bridge/serve → cross-repo atlas (layered, with a worked example) |
 | [MVP Spec](./docs/MVP.md) | The `repo_memory` grounded-MCP facade: architecture, the 12 tools, guarantees |
 | [Close-the-loop workflow](./docs/close-loop-workflow.md) | Produce → bridge → consume → feed-back narrative |
 | [CodeWiki engine](./docs/CODEWIKI.md) | The doc-generation engine: providers, CLI commands, benchmarks, paper |
