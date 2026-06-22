@@ -163,7 +163,7 @@ Every improvement followed one loop:
 | 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end on *broad* prior-art; gap = task-*completion* + the judge can't verify |
 | 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
 | 6 | **Symbol-text enrichment** → leaner, deterministic rank-check | **6a (+body): net-neutral** (top-10 3→3); **6b (doc+sig, no body): WIN** — top-10 3→**6/11**, surfaced 6→**8/11**, mean rank 51.5→41.5 | the body dilutes a strong name-anchored match; **doc-comment + signature is pure signal → shipped as the default** |
-| 7 | **Outcome-driven flywheel** — 3-arm agentic harness + proxy↔outcome correlation (instrument built) | infrastructure shipped + unit-tested (9 commits, 41 tests); **no outcome numbers yet** — first 3-arm reading pending a `claude`-CLI + built-index + live-embeddings env | built the *scale*, not the measurement: `forced-inject` arm isolates knowledge value, `optional` arm measures adoption, their gap = the adoption tax |
+| 7 | **Outcome-driven flywheel** — 4-arm agentic eval + proxy↔outcome correlation (FIRST READING, N=10) | **rich NULL on outcomes**: grounded-success control **40%** ≥ mandatory-call 30% ≥ optional 20% = forced-inject 20%; **natural adoption 0/10** (verified), forced 10/10; proxy does **not** predict outcome | the binding constraint is **adoption + task-completion**, not retrieval; KB arms don't beat control; **±20pp N=10 noise floor** (optional≡control behaviourally yet differ 20pp) |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -306,8 +306,9 @@ on the same pipeline. **Clear win:** required-API in **top-10 3/11 → 6/11** (d
 the embedding; doc-comment + signature is the pure behavioral signal. **This is now the shipped
 default** (`extract_symbol_source(body_lines=3)`). Bounds: N=11 (3→6 = 3 tasks flipping, directional
 but real); 5/11 still miss top-10, 3 never improve (`gen-texture`/`readback`/`fps-macro` — likely no
-doc-comment or a deeper query-mismatch). A real, measured improvement to symbol precision — not a
-total fix, and the agentic grounded-success translation is still unrun.
+doc-comment or a deeper query-mismatch). A real, measured improvement to symbol precision — but lap 7
+then ran the agentic translation and found it does **not** move agents: the binding constraint is
+adoption (0/10 unprompted) + task-completion, not symbol-retrieval rank.
 
 ---
 
@@ -346,24 +347,29 @@ total fix, and the agentic grounded-success translation is still unrun.
 - **Small, single corpus** (3 repos, 15 offline + 21 agentic tasks, one embedding model) —
   directional, not statistically strong.
 
-**Net:** we have a **reliable, judge-free instrument**, three valid negatives — and now a **measured
-positive**. The instrument's full arc: lap 5 *localized* the gap (symbol-precise retrieval, 30%
-surfaced), lap 6a *refuted* a plausible fix (full-body enrichment, net-neutral) before we shipped it,
-and lap 6b *found and validated* the real one (**leaner doc-comment+signature enrichment** — top-10
-3/11→6/11, surfaced 6/11→8/11, now the default). The gap is **partially closed**: symbol precision
-measurably improved, though 5/11 still miss top-10. That is the methodology paying off end-to-end —
-diagnose → propose → refute → refine → ship, all on deterministic evidence.
+**Net:** we have a **reliable, judge-free instrument** and a clear-eyed arc. On the *offline proxy*
+the methodology paid off end-to-end — lap 5 localized the gap (symbol-precise retrieval, 30%
+surfaced), lap 6a refuted a plausible fix (full-body enrichment) before shipping it, lap 6b found and
+shipped the real one (leaner doc-comment+signature enrichment, top-10 3/11→6/11). **But lap 7 closed
+the loop on outcomes and the news is sobering:** that offline win does **not** translate to agent
+behaviour. The binding constraints are **adoption** (0/10 unprompted, replicating the lap-1 null) and
+**task-completion** (even forced or pre-injected knowledge doesn't beat a no-KB control, within a
+±20pp N=10 noise floor). The instrument's most valuable act was *deflationary* — it stopped us
+optimising find_related precision (a non-binding constraint for the agentic outcome) and pointed at
+the real walls.
 
-**Deferred follow-ups (after lap 6b shipped):** (1) the **3 still-missing symbols** (`gen-texture`/
-`readback`/`fps-macro`) — likely no doc-comment / deeper query-mismatch → a different lever
-(name-weighting, body→FTS-only-not-vector, or a learned re-ranker); (2) confirm the rank gain
-**translates to agentic grounded-success** — the *instrument* for this now exists (lap 7, below); the
-real 3-arm reading is **pending** an environment with the `claude` CLI + a built index + live
-embeddings; (3) don't *unconditionally* force find_related (it can waste turns when the answer is
-trivial); pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
-*feed-back* stage of the produce→consume loop.
+**Deferred follow-ups (re-prioritised after lap 7):** (1) **adoption is the lever, not retrieval** —
+agents won't reach for a cross-repo tool on locally-solvable tasks; options are (a) induce adoption
+(tool descriptions / a skill / surface only when locally-unsolvable), (b) target deployment contexts
+that *genuinely require* cross-repo knowledge, or (c) accept it as a forced/mandated tool — but
+mandatory-call didn't beat control either, so (b)+(measurement) come first. (2) **fix the
+outcome metric before more claims**: the grounding scorer under-credits "implement *using* X" tasks
+where the agent edits X — credit the required API anywhere in the agent's touched hunks, and/or
+curate strictly call-site tasks; and **grow N ≥ 30** to clear the ±20pp noise floor. (3) lower
+priority now: the 3 still-missing symbols; pool-aware re-ranking; grounding stratified sampling; a
+doc↔source relevance model; and the still-unbuilt *feed-back* stage of the produce→consume loop.
 
-### Lap 7 — Outcome-driven flywheel (instrument built, reading pending)
+### Lap 7 — Outcome-driven flywheel (first real reading: a rich null)
 
 The original null result was null **by construction** — agents made *zero* MCP calls, so the A/B
 had no signal — and the offline retrieval metric we have been optimizing (lap 6b) had never been
@@ -384,11 +390,45 @@ shown to move real agents. Lap 7 closes that gap by building the *instrument*, p
   heuristic) + authoritative oracle (source-token fallback for under-indexed symbols) — the two bugs
   that biased the outcome signal.
 
-**Status:** infrastructure + unit tests only. This lap built the *scale*, not the measurement — the
-first real 3-arm reading needs the `claude` CLI, a built index, and a live embeddings endpoint (none
-available at build time), so there are **no outcome numbers yet**. Built via a subagent workflow
-(sequential implementers + per-task adversarial spec/quality review); the review pass caught one real
-plan bug (a test-helper name collision) before merge.
+**Built** via a subagent workflow (sequential implementers + per-task adversarial spec/quality
+review; the review pass caught one real plan bug before merge). Infrastructure: 9 commits, 41 unit
+tests; runner `scripts/run_eval_arms.sh`.
+
+**First reading (N=10, the 11 finding-bottleneck tasks, 1 timed out; `atlas-leaner.db` / real bge-m3;
+44 `claude -p` runs):**
+
+| arm | grounded-success | natural adoption | find_related surfaced gold |
+|---|---|---|---|
+| control (no KB) | **40%** | — | — |
+| optional (MCP available, no nudge) | 20% | **0/10** | — |
+| forced-inject (prior-art pre-pasted) | 20% | — | — |
+| mandatory-call (forced `find_related` first) | 30% | 10/10 | 60% |
+
+Read it as a **rich null on outcomes**, with four robust findings:
+
+1. **Adoption is the wall — 0/10, verified.** On tasks where the right API is non-obvious *and* the
+   tools were wired, agents called repo-atlas **zero** times unprompted (transcript-parsed: the lone
+   `mcp__repo-atlas` mention is the availability listing, not a call; mandatory-call made 2 calls
+   each, so telemetry is sound). This **replicates the lap-1 null at the harder, retrieval-favourable
+   task set**: passive availability ≠ adoption — agents rationally don't reach for a cross-repo tool
+   on a *locally solvable* task.
+2. **No arm beats control, and the deltas are noise.** `optional` is behaviourally **identical** to
+   `control` (0 adoption → bare prompt) yet scored 20% vs 40% — a 2-task swing between identical
+   conditions pins the **N=10 noise floor at ≈ ±20pp**. Every arm difference here is within it.
+3. **Even forcing the knowledge in doesn't help.** `forced-inject` (answer pasted in) and
+   `mandatory-call` (60% surfaced, forced to retrieve) both land ≤ control. So the bottleneck is
+   **task-completion, not finding** — echoing lap 4. (And the grounding scorer under-credits
+   "implement *using* X" tasks where the agent legitimately *edits* X instead of calling it — the
+   format-decode case — so these numbers understate genuine API use.)
+4. **The proxy does not predict the outcome.** Per-arm grounded-success was *lower* when the offline
+   symbol-rank proxy surfaced the API (control 29% surfaced vs 67% not; n=7/3) — no positive signal
+   that the lap-6b retrieval win moves agents (small unsurfaced bucket; likely a selection effect —
+   retrieval-hard tasks are also implementation-hard).
+
+**What validated:** the 4-arm harness ran end-to-end at scale, the MCP path works (10/10 forced
+adoption, 60% surfaced), and the correlation/contrasts compute. The instrument is sound — and it did
+its job: it **deflated the retrieval-optimisation thread**, showing adoption + task-completion +
+measurement-fidelity dominate the agentic outcome, not find_related precision.
 
 ---
 
