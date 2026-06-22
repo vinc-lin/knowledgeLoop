@@ -153,7 +153,7 @@ Every improvement followed one loop:
 
 ## Part III — Evaluation Results
 
-### Timeline (one loop, five laps)
+### Timeline (one loop, six laps)
 
 | Lap | Instrument | Result | Lesson |
 |---|---|---|---|
@@ -162,6 +162,7 @@ Every improvement followed one loop:
 | 3 | **Offline retrieval+grounding** (pivot) | see below | tune the proxy deterministically |
 | 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end on *broad* prior-art; gap = task-*completion* + the judge can't verify |
 | 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
+| 6 | **Symbol-text enrichment** (the proposed fix, deterministic rank-check) | **valid negative**: net-neutral — top-10 3/11→3/11, surfaced 6/11→6/11; 4 improved / ~5 regressed | enriching symbol text with its body is double-edged — adds behavioral signal *and* dilutes a strong name-anchored match; not a fix as-specced |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -269,6 +270,31 @@ sometimes *hurt*: `arraysize` went 2→24 turns (baseline wrote `sizeof/sizeof` 
 treatment burned 24 turns searching, never found the macro, and hallucinated). **The next lever is
 symbol-precise retrieval for "use-the-existing-helper" intents** — the justified consume-side cycle.
 
+### Symbol-text enrichment (2026-06-22, deterministic rank-check, real bge-m3)
+
+The proposed fix for lap 5: index each symbol *with its source* (doc-comment + signature + first
+~15 body lines, capped ~500 chars), so a goal-phrased query matches what the symbol *does*. Tested
+the cleanest way — a **doc-free symbol-rank check**: build two indexes from the same CBM
+enumeration on the same embedder (real bge-m3, served locally via a sentence-transformers GPU
+endpoint when Ollama was unavailable), pre-enrich vs enriched, and compare the required-API's rank
+in `kinds=['symbol']` retrieval. (Re-baselined, so the delta isolates the text change.)
+
+**Result — net-neutral, a valid negative:** required-API in **top-10 3/11 → 3/11**, mixed-surfaced
+**6/11 → 6/11**, mean rank 51.5 → 46.2 (~flat); **4 tasks improved, ~5 regressed, 2 flat**.
+
+It is **double-edged**: enrichment *helped* where the body adds discriminating behavioral signal
+(`format-decode` 14→2, `sensormanager` 17→4) but *hurt* where it diluted an already-strong
+name-anchored match (`planar-info` 1→7, `convert-clbuffer` 10→21, `scale-buffer` 22→None). The
+mechanism: appending the body **averages the symbol embedding** — adding signal *and* off-topic
+tokens — so it rescues cryptic names and drags down good ones. The spec's "richer text → better
+match" hypothesis is **partially refuted**: it's not free. So enrichment-with-body is **not** the
+fix (the code is merged at `e2c899a` but shouldn't be claimed as a solution). The obvious next test
+the mechanism points at: a **leaner enrichment — doc-comment + signature only, no body** — to keep
+the behavioral signal without the body dilution (a one-line `body_lines=0` change on the now-ready
+pipeline). Caveat: the local bge-m3 ran at `max_seq_length=1024` (docs truncate; symbols at ~150
+tokens are unaffected, and the rank check is doc-free) — the pre→enr *delta* is controlled (same
+embedder), so the net-neutral conclusion holds.
+
 ---
 
 ## Part IV — Honest Assessment
@@ -306,16 +332,18 @@ symbol-precise retrieval for "use-the-existing-helper" intents** — the justifi
 - **Small, single corpus** (3 repos, 15 offline + 21 agentic tasks, one embedding model) —
   directional, not statistically strong.
 
-**Net:** we now have a **reliable, judge-free instrument** and two *valid* negatives. The open
-question has resolved into a precise next lever: broad prior-art retrieval is validated (90%), but
-**symbol-precise retrieval for "use-the-existing-helper" intents is the gap** (30% surfaced, +0
-grounded). That — not more task-completion difficulty — is where the demonstrable value is currently
-blocked, and it is the justified consume-side cycle.
+**Net:** we now have a **reliable, judge-free instrument** and *three* valid negatives. The gap is
+precise — **symbol-precise retrieval for "use-the-existing-helper" intents** (lap 5: 30% surfaced,
++0 grounded) — and the first proposed fix (lap 6, symbol-text enrichment with body) is **net-neutral
+and double-edged**, so the gap is still open. The instrument keeps doing its job: it refuted a
+plausible fix deterministically before we shipped it as a solution.
 
-**Deferred follow-ups (now prioritized by lap 5):** (1) **symbol-precise retrieval** — surface the
-specific callable symbol, not just its file, for find-intent queries (the highest-value next step);
-(2) don't *unconditionally* force find_related (it can waste turns when the answer is trivial);
-pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
+**Deferred follow-ups (re-prioritized by lap 6):** (1) **leaner symbol enrichment** — doc-comment +
+signature only, *no body* — the active next test of the "body is the noise" hypothesis (a one-line
+`body_lines=0` change on the now-ready re-index+rank-check pipeline); (2) if that also fails, a
+different lever for symbol precision (name-weighting, body→FTS-only-not-vector, or a learned
+re-ranker); (3) don't *unconditionally* force find_related (it can waste turns when the answer is
+trivial); pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
 *feed-back* stage of the produce→consume loop.
 
 ---
