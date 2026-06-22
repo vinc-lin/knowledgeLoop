@@ -72,3 +72,32 @@ def aggregate(pairs: list) -> Scorecard:
     }
     summary["success_delta"] = summary["success_treatment"] - summary["success_baseline"]
     return Scorecard(pairs=pairs, summary=summary)
+
+
+@dataclass
+class MultiScorecard:
+    per_task: dict          # task_id -> {arm -> TaskScore}
+    arms: list              # arm order
+    summary: dict
+
+
+def aggregate_arms(per_task: dict, arms: list) -> MultiScorecard:
+    """Per-arm grounded-success + the three loop-decomposing contrasts. `per_task` maps
+    task_id -> {arm -> TaskScore}; arms missing from a task are skipped for that arm's mean."""
+    by_arm = {a: [pt[a] for pt in per_task.values() if a in pt] for a in arms}
+    succ = {a: _mean([1.0 if s.success else 0.0 for s in by_arm[a]]) for a in arms}
+    summary = {
+        "n": len(per_task),
+        "success": succ,
+        "adoption_runs": {a: sum(1 for s in by_arm[a] if s.atlas_calls > 0) for a in arms},
+        "surfaced_rate": {a: _mean([1.0 if s.retrieval_surfaced_gold else 0.0 for s in by_arm[a]])
+                          for a in arms},
+        "contrasts": {},
+    }
+    if "forced-inject" in arms and "control" in arms:
+        summary["contrasts"]["ceiling (forced−control)"] = succ["forced-inject"] - succ["control"]
+    if "optional" in arms and "control" in arms:
+        summary["contrasts"]["captured (optional−control)"] = succ["optional"] - succ["control"]
+    if "forced-inject" in arms and "optional" in arms:
+        summary["contrasts"]["adoption_tax (forced−optional)"] = succ["forced-inject"] - succ["optional"]
+    return MultiScorecard(per_task, arms, summary)

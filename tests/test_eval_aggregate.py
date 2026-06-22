@@ -53,3 +53,31 @@ def test_aggregate_classifies_and_counts_mechanism():
     assert sc.summary["causal_wins"] == 1
     assert sc.summary["categories"]["causal-win"] == 1
     assert sc.summary["surfaced_rate"] == 1.0 and sc.summary["reused_rate"] == 1.0
+
+
+def _arm_score(arm, success):
+    from repo_atlas.eval.aggregate import TaskScore
+    return TaskScore(task_id="t", condition=arm, success=success, hallucination_rate=0.0,
+                     reuse_recall=0.0, exploration_cost=1, atlas_calls=(1 if arm == "optional" and success else 0),
+                     retrieval_surfaced_gold=success)
+
+
+def test_aggregate_arms_success_and_contrasts():
+    from repo_atlas.eval.aggregate import aggregate_arms
+    arms = ["control", "optional", "forced-inject"]
+    per_task = {
+        "t1": {"control": _arm_score("control", False), "optional": _arm_score("optional", False),
+               "forced-inject": _arm_score("forced-inject", True)},
+        "t2": {"control": _arm_score("control", False), "optional": _arm_score("optional", True),
+               "forced-inject": _arm_score("forced-inject", True)},
+    }
+    sc = aggregate_arms(per_task, arms)
+    assert sc.summary["n"] == 2
+    assert sc.summary["success"]["control"] == 0.0
+    assert sc.summary["success"]["optional"] == 0.5
+    assert sc.summary["success"]["forced-inject"] == 1.0
+    contrasts = sc.summary["contrasts"]
+    assert contrasts["ceiling (forced−control)"] == 1.0          # 1.0 - 0.0
+    assert contrasts["captured (optional−control)"] == 0.5       # 0.5 - 0.0
+    assert contrasts["adoption_tax (forced−optional)"] == 0.5    # 1.0 - 0.5
+    assert sc.summary["adoption_runs"]["optional"] == 1          # only the t2 optional success called tools
