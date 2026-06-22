@@ -47,3 +47,31 @@ def render_scorecard(scorecard) -> str:
     lines.append(f"\n## Verdict\nrepo_atlas is **{'useful' if useful else 'NOT clearly useful'}** "
                  f"on this task set (primary = task success).")
     return "\n".join(lines)
+
+
+def render_multi_scorecard(scorecard, correlations=None) -> str:
+    """Markdown for the multi-arm outcome-driven eval: per-arm grounded-success, the loop
+    contrasts, and (optional) the proxy↔outcome correlation with an explicit small-N caveat."""
+    s = scorecard.summary
+    arms = scorecard.arms
+    lines = ["# repo_atlas eval — multi-arm (outcome-driven)\n",
+             f"Tasks: **{s['n']}**  ·  arms: {', '.join(arms)}\n",
+             "| arm | grounded-success | adoption (runs) | surfaced |",
+             "|---|---|---|---|"]
+    for a in arms:
+        lines.append(f"| {a} | {_pct(s['success'][a])} | "
+                     f"{s['adoption_runs'][a]}/{s['n']} | {_pct(s['surfaced_rate'][a])} |")
+    lines.append("\n## Arm contrasts")
+    for label, val in s["contrasts"].items():
+        lines.append(f"- **{label}**: {val * 100:+.0f}pp")
+    if correlations:
+        lines += ["\n## Proxy → outcome correlation",
+                  f"_N={s['n']}, directional only (small sample)._\n",
+                  "| arm | success if surfaced | success if not | n surfaced/not |",
+                  "|---|---|---|---|"]
+        for cr in correlations:
+            sif = "—" if cr["success_if_surfaced"] is None else _pct(cr["success_if_surfaced"])
+            nif = "—" if cr["success_if_not"] is None else _pct(cr["success_if_not"])
+            lines.append(f"| {cr['arm']} | {sif} | {nif} | "
+                         f"{cr['n_surfaced']}/{cr['n_unsurfaced']} |")
+    return "\n".join(lines)
