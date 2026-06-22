@@ -28,7 +28,7 @@ EVAL_DIR="${EVAL_DIR:-/home/vinc/repo-atlas-eval-full}"
 # four arms differ only in HOW the knowledge reaches the agent, not in WHAT it is.
 export REPO_ATLAS_DB="${REPO_ATLAS_DB:-$EVAL_DIR/atlas-leaner.db}"
 export REPO_ATLAS_REGISTRY="${REPO_ATLAS_REGISTRY:-$EVAL_DIR/atlas.toml}"
-export REPO_ATLAS_BASE_URL="${REPO_ATLAS_BASE_URL:-http://127.0.0.1:11434/v1}"
+export REPO_ATLAS_BASE_URL="${REPO_ATLAS_BASE_URL:-http://127.0.0.1:11500/v1}"
 export REPO_ATLAS_API_KEY="${REPO_ATLAS_API_KEY:-local}"
 export REPO_ATLAS_EMBED_MODEL="${REPO_ATLAS_EMBED_MODEL:-bge-m3}"
 
@@ -53,13 +53,15 @@ command -v claude >/dev/null 2>&1 || fail "the 'claude' CLI is not on PATH (the 
 [ -f "$MCP_CONFIG" ] || fail "mcp config not found: $MCP_CONFIG"
 [ -d "$TASKS" ] || fail "tasks dir not found: $TASKS"
 
-# embeddings endpoint reachable AND serving the expected model?
+# embeddings endpoint reachable AND serving the expected model? (NB: :11434 here is Ollama, which
+# has NO bge-m3 — the index was built with the local bge-m3 server on :11500.)
+EMB_PORT="$(printf '%s' "$REPO_ATLAS_BASE_URL" | sed -E 's#.*://[^:/]+:([0-9]+).*#\1#')"
 if ! curl -sf -m 8 -X POST "$REPO_ATLAS_BASE_URL/embeddings" \
       -H 'content-type: application/json' \
       -d "{\"input\":[\"ping\"],\"model\":\"$REPO_ATLAS_EMBED_MODEL\"}" >/dev/null 2>&1; then
   fail "embeddings endpoint not reachable at $REPO_ATLAS_BASE_URL/embeddings
   start the bge-m3 GPU server (must serve the SAME model the index was built with):
-    /tmp/bge-venv/bin/python $EVAL_DIR/bge_embed_server.py 11434 &
+    /tmp/bge-venv/bin/python $EVAL_DIR/bge_embed_server.py ${EMB_PORT:-11500} &
   if /tmp/bge-venv is gone (it is ephemeral), recreate it:
     uv venv --python 3.12 /tmp/bge-venv && \\
     uv pip install --python /tmp/bge-venv/bin/python sentence-transformers
