@@ -397,7 +397,11 @@ plan bug (a test-helper name collision) before merge.
 - Specs/plans: `docs/superpowers/specs/2026-06-21-*` and `docs/superpowers/plans/2026-06-21-*`
   (retrieval eval, retrieval rebalance, multi-gold relevance, close-the-loop agentic eval,
   grounding-based finding-bottleneck eval).
-- Run setup: `/home/vinc/repo-atlas-eval-full/` (`atlas.db`, `atlas.toml`, `mcp.json`).
+- Run setup: `/home/vinc/repo-atlas-eval-full/` (`atlas.toml`, the `atlas-{preenrich,enriched,leaner}.db`
+  indexes, `mcp{,-leaner}.json`, `bge_embed_server.py`).
+- **Lap-7 runner:** `scripts/run_eval_arms.sh` (committed, parameterized, preflighted) +
+  `/home/vinc/repo-atlas-eval-full/EVAL-ARMS-README.md` — one command for the first real 3-arm reading
+  once the `claude` CLI + bge-m3 endpoint + `atlas-leaner.db` are present.
 - Scorecards: `offline-scorecard{,-rebalanced,-multigold}.md`, `closeloop-scorecard.md`,
   `grounding-scorecard.md`; diagnosis: `diagnosis.md`.
 - Code: `repo_atlas/` (engine + tools) · `repo_atlas/eval/` (agentic + mechanism) ·
