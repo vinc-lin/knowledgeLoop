@@ -153,7 +153,7 @@ Every improvement followed one loop:
 
 ## Part III — Evaluation Results
 
-### Timeline (one loop, six laps)
+### Timeline (one loop, seven laps)
 
 | Lap | Instrument | Result | Lesson |
 |---|---|---|---|
@@ -163,6 +163,7 @@ Every improvement followed one loop:
 | 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end on *broad* prior-art; gap = task-*completion* + the judge can't verify |
 | 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
 | 6 | **Symbol-text enrichment** → leaner, deterministic rank-check | **6a (+body): net-neutral** (top-10 3→3); **6b (doc+sig, no body): WIN** — top-10 3→**6/11**, surfaced 6→**8/11**, mean rank 51.5→41.5 | the body dilutes a strong name-anchored match; **doc-comment + signature is pure signal → shipped as the default** |
+| 7 | **Outcome-driven flywheel** — 3-arm agentic harness + proxy↔outcome correlation (instrument built) | infrastructure shipped + unit-tested (9 commits, 41 tests); **no outcome numbers yet** — first 3-arm reading pending a `claude`-CLI + built-index + live-embeddings env | built the *scale*, not the measurement: `forced-inject` arm isolates knowledge value, `optional` arm measures adoption, their gap = the adoption tax |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -356,10 +357,38 @@ diagnose → propose → refute → refine → ship, all on deterministic eviden
 **Deferred follow-ups (after lap 6b shipped):** (1) the **3 still-missing symbols** (`gen-texture`/
 `readback`/`fps-macro`) — likely no doc-comment / deeper query-mismatch → a different lever
 (name-weighting, body→FTS-only-not-vector, or a learned re-ranker); (2) confirm the rank gain
-**translates to agentic grounded-success** (rerun the lap-5 grounding eval on the enriched index);
-(3) don't *unconditionally* force find_related (it can waste turns when the answer is trivial);
-pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
+**translates to agentic grounded-success** — the *instrument* for this now exists (lap 7, below); the
+real 3-arm reading is **pending** an environment with the `claude` CLI + a built index + live
+embeddings; (3) don't *unconditionally* force find_related (it can waste turns when the answer is
+trivial); pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
 *feed-back* stage of the produce→consume loop.
+
+### Lap 7 — Outcome-driven flywheel (instrument built, reading pending)
+
+The original null result was null **by construction** — agents made *zero* MCP calls, so the A/B
+had no signal — and the offline retrieval metric we have been optimizing (lap 6b) had never been
+shown to move real agents. Lap 7 closes that gap by building the *instrument*, per
+`docs/superpowers/specs/2026-06-22-outcome-driven-flywheel-design.md` (+ plan). Shipped, 9 commits,
+41 unit tests, ruff clean:
+
+- **3-arm agentic harness** (`ClaudeRunner` + `eval-arms` CLI): `control` (no KB) · `optional`
+  (MCP available, *no* directive → natural adoption on finding-bottleneck tasks) · `forced-inject`
+  (retrieval result pre-pasted into context, adoption-free) · `mandatory-call` (the legacy forced
+  directive, retained). The `forced-inject` arm isolates *does the knowledge help*; `optional`
+  measures *do agents adopt it*; their difference **is** the adoption tax.
+- **Proxy↔outcome correlation** (`correlation.py`): joins the offline symbol-rank proxy (the lap-6b
+  metric) with per-arm grounded-success, reporting "success if the proxy surfaced the API vs not"
+  plus three arm contrasts — `forced−control` (knowledge ceiling), `optional−control` (captured
+  today), `forced−optional` (adoption tax).
+- **Trust fixes**: gold-anchored extraction (exact `required_api` tokens survive the `_is_symbol_ref`
+  heuristic) + authoritative oracle (source-token fallback for under-indexed symbols) — the two bugs
+  that biased the outcome signal.
+
+**Status:** infrastructure + unit tests only. This lap built the *scale*, not the measurement — the
+first real 3-arm reading needs the `claude` CLI, a built index, and a live embeddings endpoint (none
+available at build time), so there are **no outcome numbers yet**. Built via a subagent workflow
+(sequential implementers + per-task adversarial spec/quality review); the review pass caught one real
+plan bug (a test-helper name collision) before merge.
 
 ---
 
