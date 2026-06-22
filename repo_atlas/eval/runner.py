@@ -27,6 +27,36 @@ STEER = (
     "actually exist. Prefer reusing existing patterns over inventing new ones.\n\nTask:\n"
 )
 
+INJECT_HEADER = "Relevant prior art in this codebase (reuse these instead of inventing):"
+
+
+def format_injection(units: list, *, max_k: int = 5, max_chars: int = 400) -> str:
+    """Render the top retrieval units as a prior-art block to PREPEND for the forced-inject arm.
+    `units` are find_related_units dicts (file/name/text). Whitespace is collapsed and each
+    snippet char-capped so the injected context stays bounded. Empty units -> "" (no header)."""
+    rows = []
+    for u in units[:max_k]:
+        name = u.get("name") or u.get("qualified_name") or "?"
+        path = u.get("file") or "?"
+        snippet = " ".join((u.get("text") or "").split())[:max_chars]
+        rows.append(f"- `{name}` ({path}): {snippet}")
+    if not rows:
+        return ""
+    return INJECT_HEADER + "\n" + "\n".join(rows) + "\n\n"
+
+
+# arm -> (wire_mcp, prompt_mode). prompt_mode: "bare" | "steer" | "inject".
+# control/optional/forced-inject/mandatory-call are the canonical arms; baseline/treatment are
+# retained as back-compat aliases for the legacy 2-condition harness + tests.
+ARMS = {
+    "control": (False, "bare"),
+    "optional": (True, "bare"),
+    "forced-inject": (False, "inject"),
+    "mandatory-call": (True, "steer"),
+    "baseline": (False, "bare"),
+    "treatment": (True, "steer"),
+}
+
 
 def _count_atlas_in_transcript(path: str) -> int:
     """Count repo_atlas MCP tool_use calls in a Claude Code session transcript (.jsonl).
@@ -174,13 +204,20 @@ class ClaudeRunner:
         self._model = model
         self._steer = steer
 
-    def _build_cmd(self, task: Task, condition: str, work: str) -> list:
-        """Construct the `claude -p` argv. Baseline gets the bare task prompt; treatment
-        prepends the mandatory tool directive to the prompt and wires/allows the MCP tools."""
-        prompt = self._steer + task.prompt if condition == "treatment" else task.prompt
+    def _build_cmd(self, task: Task, condition: str, work: str, inject_text: str = "") -> list:
+        """Construct the `claude -p` argv for an arm. control/baseline: bare prompt, no MCP.
+        optional: bare prompt + MCP wired. forced-inject: prior-art prepended, NO MCP.
+        mandatory-call/treatment: STEER directive prepended + MCP wired."""
+        wire_mcp, mode = ARMS[condition]
+        if mode == "steer":
+            prompt = self._steer + task.prompt
+        elif mode == "inject":
+            prompt = inject_text + task.prompt
+        else:
+            prompt = task.prompt
         cmd = ["claude", "-p", prompt, "--output-format", "json",
                "--permission-mode", "acceptEdits", "--add-dir", work, "--model", self._model]
-        if condition == "treatment":
+        if wire_mcp:
             cmd += ["--mcp-config", self._mcp, "--strict-mcp-config",
                     "--allowedTools", "mcp__repo-atlas__find_related",
                     "mcp__repo-atlas__prepare_change", "mcp__repo-atlas__verify_grounding",

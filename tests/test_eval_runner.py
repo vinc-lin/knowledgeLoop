@@ -2,7 +2,7 @@ import json
 
 import pytest
 from repo_atlas.eval.runner import (RunResult, StubRunner, ClaudeRunner,
-                                    _count_atlas_in_transcript)
+                                    _count_atlas_in_transcript, format_injection)
 from repo_atlas.eval.tasks import Task
 
 
@@ -55,3 +55,44 @@ def test_count_atlas_in_transcript(tmp_path):
 
 def test_count_atlas_missing_file():
     assert _count_atlas_in_transcript("/nonexistent/x.jsonl") == 0
+
+
+def test_build_cmd_optional_wires_mcp_without_directive():
+    r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
+    cmd = r._build_cmd(t, "optional", "/work")
+    prompt = cmd[cmd.index("-p") + 1]
+    assert prompt == "do the thing"                       # NO directive prepended
+    assert "find_related" not in prompt
+    assert "--mcp-config" in cmd                          # tools available, agent may choose
+
+
+def test_build_cmd_forced_inject_prepends_text_no_mcp():
+    r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
+    cmd = r._build_cmd(t, "forced-inject", "/work", inject_text="PRIOR ART: cgeFoo\n\n")
+    prompt = cmd[cmd.index("-p") + 1]
+    assert prompt.startswith("PRIOR ART: cgeFoo")
+    assert "do the thing" in prompt
+    assert "--mcp-config" not in cmd                      # knowledge injected; tools NOT wired
+
+
+def test_build_cmd_control_is_bare_no_mcp():
+    r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
+    cmd = r._build_cmd(t, "control", "/work")
+    assert cmd[cmd.index("-p") + 1] == "do the thing"
+    assert "--mcp-config" not in cmd
+
+
+def test_format_injection_caps_and_headers():
+    units = [{"name": "cgeFoo", "file": "a.cpp", "text": "x " * 500},
+             {"name": "cgeBar", "file": "b.cpp", "text": "does bar"}]
+    out = format_injection(units, max_k=1, max_chars=20)
+    assert out.startswith("Relevant prior art")
+    assert "cgeFoo" in out and "cgeBar" not in out        # max_k=1 keeps only the top unit
+    assert "x x x x x" in out and len(out) < 120          # snippet collapsed + char-capped
+
+
+def test_format_injection_empty_is_blank():
+    assert format_injection([]) == ""
