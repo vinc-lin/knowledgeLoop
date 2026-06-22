@@ -54,3 +54,22 @@ async def test_score_credits_required_api_reference_as_reused():
     score = await _score(task, run, judge=GroundingScorer(), exists_fn=lambda s: True)
     assert score.success is True            # grounded
     assert score.reused_prior_art is True   # referencing the required api counts as reuse/grounded
+
+
+@pytest.mark.asyncio
+async def test_run_multi_eval_per_arm_with_stubs():
+    from repo_atlas.eval.harness import run_multi_eval
+    from repo_atlas.eval.grounding_scorer import GroundingScorer
+    task = Task(id="t1", kind="dev", repo="r1", prompt="p", rubric="x", required_apis=["cgeFoo"])
+    runner = StubRunner({
+        ("t1", "control"): RunResult("control", [], [], 5, 50, {}, "", 0),
+        ("t1", "optional"): RunResult("optional", ["cgeFoo"], [], 4, 60, {}, "", 1),
+        ("t1", "forced-inject"): RunResult("forced-inject", ["cgeFoo"], [], 3, 70, {}, "", 0),
+    })
+    arms = ["control", "optional", "forced-inject"]
+    sc = await run_multi_eval([task], runner, arms, GroundingScorer(), lambda s: True)
+    assert sc.summary["n"] == 1
+    assert sc.summary["success"]["control"] == 0.0           # no required api in diff
+    assert sc.summary["success"]["optional"] == 1.0          # referenced cgeFoo
+    assert sc.summary["success"]["forced-inject"] == 1.0
+    assert sc.summary["contrasts"]["adoption_tax (forced−optional)"] == 0.0

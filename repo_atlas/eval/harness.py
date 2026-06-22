@@ -39,3 +39,25 @@ async def run_eval(tasks, runner, judge, exists_fn: Callable[[str], bool]):
         except Exception as exc:                       # noqa: BLE001 - resilience boundary
             print(f"[eval] task {t.id} failed, skipping: {type(exc).__name__}: {exc}")
     return aggregate(pairs)
+
+
+async def run_arms(task, runner, arms, judge, exists_fn: Callable[[str], bool]) -> dict:
+    """Run one task across every arm; return {arm -> TaskScore}."""
+    out = {}
+    for arm in arms:
+        run = await runner.run(task, condition=arm)
+        out[arm] = await _score(task, run, judge=judge, exists_fn=exists_fn)
+    return out
+
+
+async def run_multi_eval(tasks, runner, arms, judge, exists_fn: Callable[[str], bool]):
+    """Multi-arm agentic eval. A task whose run/judge raises is skipped (logged), so one bad
+    run doesn't waste a long eval. Returns a MultiScorecard."""
+    from repo_atlas.eval.aggregate import aggregate_arms
+    per_task = {}
+    for t in tasks:
+        try:
+            per_task[t.id] = await run_arms(t, runner, arms, judge, exists_fn)
+        except Exception as exc:                       # noqa: BLE001 - resilience boundary
+            print(f"[eval] task {t.id} failed, skipping: {type(exc).__name__}: {exc}")
+    return aggregate_arms(per_task, arms)
