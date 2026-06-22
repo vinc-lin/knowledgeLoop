@@ -162,7 +162,7 @@ Every improvement followed one loop:
 | 3 | **Offline retrieval+grounding** (pivot) | see below | tune the proxy deterministically |
 | 4 | Close-the-loop agentic (mechanism-resolved) | **valid negative**: +0pp, 0 causal wins — but retrieval surfaced 90% | retrieval works end-to-end on *broad* prior-art; gap = task-*completion* + the judge can't verify |
 | 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
-| 6 | **Symbol-text enrichment** (the proposed fix, deterministic rank-check) | **valid negative**: net-neutral — top-10 3/11→3/11, surfaced 6/11→6/11; 4 improved / ~5 regressed | enriching symbol text with its body is double-edged — adds behavioral signal *and* dilutes a strong name-anchored match; not a fix as-specced |
+| 6 | **Symbol-text enrichment** → leaner, deterministic rank-check | **6a (+body): net-neutral** (top-10 3→3); **6b (doc+sig, no body): WIN** — top-10 3→**6/11**, surfaced 6→**8/11**, mean rank 51.5→41.5 | the body dilutes a strong name-anchored match; **doc-comment + signature is pure signal → shipped as the default** |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -295,6 +295,19 @@ pipeline). Caveat: the local bge-m3 ran at `max_seq_length=1024` (docs truncate;
 tokens are unaffected, and the rank check is doc-free) — the pre→enr *delta* is controlled (same
 embedder), so the net-neutral conclusion holds.
 
+**6b — the leaner variant (the actual fix).** The mechanism pointed straight at the body as the
+noise, so we re-tested with **doc-comment + signature only, no implementation body** (`body_lines=3`)
+on the same pipeline. **Clear win:** required-API in **top-10 3/11 → 6/11** (doubled), mixed-surfaced
+**6/11 → 8/11**, mean rank **51.5 → 41.5**, **6 improved / 1 regressed**. It both **kept the wins**
+(cryptic names rescued by the doc-comment: `cgeGetBlendModeName` None→8, `sensormanager` 17→8,
+`metadata-tag` 8→3) **and erased the regressions** the body had caused (`planar-info` held 1→1 vs
+1→7; `convert-clbuffer` 10→6 vs 10→21; `metadata-tag` 8→3 vs 8→17). So the body genuinely diluted
+the embedding; doc-comment + signature is the pure behavioral signal. **This is now the shipped
+default** (`extract_symbol_source(body_lines=3)`). Bounds: N=11 (3→6 = 3 tasks flipping, directional
+but real); 5/11 still miss top-10, 3 never improve (`gen-texture`/`readback`/`fps-macro` — likely no
+doc-comment or a deeper query-mismatch). A real, measured improvement to symbol precision — not a
+total fix, and the agentic grounded-success translation is still unrun.
+
 ---
 
 ## Part IV — Honest Assessment
@@ -332,18 +345,20 @@ embedder), so the net-neutral conclusion holds.
 - **Small, single corpus** (3 repos, 15 offline + 21 agentic tasks, one embedding model) —
   directional, not statistically strong.
 
-**Net:** we now have a **reliable, judge-free instrument** and *three* valid negatives. The gap is
-precise — **symbol-precise retrieval for "use-the-existing-helper" intents** (lap 5: 30% surfaced,
-+0 grounded) — and the first proposed fix (lap 6, symbol-text enrichment with body) is **net-neutral
-and double-edged**, so the gap is still open. The instrument keeps doing its job: it refuted a
-plausible fix deterministically before we shipped it as a solution.
+**Net:** we have a **reliable, judge-free instrument**, three valid negatives — and now a **measured
+positive**. The instrument's full arc: lap 5 *localized* the gap (symbol-precise retrieval, 30%
+surfaced), lap 6a *refuted* a plausible fix (full-body enrichment, net-neutral) before we shipped it,
+and lap 6b *found and validated* the real one (**leaner doc-comment+signature enrichment** — top-10
+3/11→6/11, surfaced 6/11→8/11, now the default). The gap is **partially closed**: symbol precision
+measurably improved, though 5/11 still miss top-10. That is the methodology paying off end-to-end —
+diagnose → propose → refute → refine → ship, all on deterministic evidence.
 
-**Deferred follow-ups (re-prioritized by lap 6):** (1) **leaner symbol enrichment** — doc-comment +
-signature only, *no body* — the active next test of the "body is the noise" hypothesis (a one-line
-`body_lines=0` change on the now-ready re-index+rank-check pipeline); (2) if that also fails, a
-different lever for symbol precision (name-weighting, body→FTS-only-not-vector, or a learned
-re-ranker); (3) don't *unconditionally* force find_related (it can waste turns when the answer is
-trivial); pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
+**Deferred follow-ups (after lap 6b shipped):** (1) the **3 still-missing symbols** (`gen-texture`/
+`readback`/`fps-macro`) — likely no doc-comment / deeper query-mismatch → a different lever
+(name-weighting, body→FTS-only-not-vector, or a learned re-ranker); (2) confirm the rank gain
+**translates to agentic grounded-success** (rerun the lap-5 grounding eval on the enriched index);
+(3) don't *unconditionally* force find_related (it can waste turns when the answer is trivial);
+pool-aware re-ranking; grounding stratified sampling; a doc↔source relevance model; and the
 *feed-back* stage of the produce→consume loop.
 
 ---

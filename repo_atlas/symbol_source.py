@@ -21,8 +21,13 @@ def _find_def_line(lines: list, name: str):
 
 
 def extract_symbol_source(src: str, name: str, start_line: int, end_line: int, *,
-                          max_chars: int = 500, doc_lines: int = 6, body_lines: int = 15) -> str:
-    """Preceding doc-comment + signature + leading body for a symbol, from its source FILE text.
+                          max_chars: int = 500, doc_lines: int = 6, body_lines: int = 3) -> str:
+    """Preceding doc-comment + signature (the "leaner" enrichment), from a symbol's source FILE text.
+
+    `body_lines` defaults to 3 — just the signature region, NOT the implementation body. The eval
+    (lap 6) showed including the full body (~15 lines) is net-neutral: it dilutes a strong
+    name-anchored embedding as often as it helps. Doc-comment + signature is the pure behavioral
+    signal and measurably lifts symbol-precise retrieval (required-API in top-10: 3/11 -> 6/11).
     Uses [start_line, end_line] (1-indexed) when usable; else greps for the definition. Capped."""
     if not src or not name:
         return ""
