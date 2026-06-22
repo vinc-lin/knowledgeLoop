@@ -9,10 +9,11 @@ class OfflineRetriever:
         self._store = store
         self._embedder = embedder
 
-    async def retrieve(self, query: str, repo, k: int) -> list:
+    async def retrieve(self, query: str, repo, k: int, kinds=None) -> list:
         import repo_atlas.retrieve as _r          # late import so monkeypatch targets the module
         repos = [repo] if repo else None
-        return await _r.find_related_units(self._store, self._embedder, query, repos=repos, k=k)
+        return await _r.find_related_units(self._store, self._embedder, query,
+                                           repos=repos, k=k, kinds=kinds)
 
     def ground(self, repo: str, symbols: list) -> dict:
         import repo_atlas.tools as _t
@@ -29,7 +30,7 @@ class StubRetriever:
         self._hits = hits_by_query or {}
         self._grounding = grounding_by_repo or {}
 
-    async def retrieve(self, query: str, repo, k: int) -> list:
+    async def retrieve(self, query: str, repo, k: int, kinds=None) -> list:
         return list(self._hits.get(query, []))[:k]
 
     def ground(self, repo: str, symbols: list) -> dict:
