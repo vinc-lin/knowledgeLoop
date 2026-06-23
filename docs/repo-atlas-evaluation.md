@@ -164,6 +164,7 @@ Every improvement followed one loop:
 | 5 | **Grounding-based finding-bottleneck** (judge-free) | **valid negative**: grounded-success 20%→20%, surfaced only 30% | the *reliable* test: for "use this specific buried API" tasks, retrieval doesn't surface the **symbol** — a precision gap |
 | 6 | **Symbol-text enrichment** → leaner, deterministic rank-check | **6a (+body): net-neutral** (top-10 3→3); **6b (doc+sig, no body): WIN** — top-10 3→**6/11**, surfaced 6→**8/11**, mean rank 51.5→41.5 | the body dilutes a strong name-anchored match; **doc-comment + signature is pure signal → shipped as the default** |
 | 7 | **Outcome-driven flywheel** — 4-arm agentic eval + proxy↔outcome correlation (FIRST READING, N=10) | **rich NULL on outcomes**: grounded-success control **40%** ≥ mandatory-call 30% ≥ optional 20% = forced-inject 20%; **natural adoption 0/10** (verified), forced 10/10; proxy does **not** predict outcome | the binding constraint is **adoption + task-completion**, not retrieval; KB arms don't beat control; **±20pp N=10 noise floor** (optional≡control behaviourally yet differ 20pp) |
+| 7b | **Genuine-gap re-run** — 8 grep-verified gap tasks + `GroundedUseScorer` (target-site, anti-gaming), 4 arms × 8 | **inverts to ~100% on ALL arms** incl. no-KB control; ceiling forced−control **−12pp**, captured optional−control **0pp** | control finds the helper **itself via `grep`** (6 calls, transcript-verified) → find_related is **redundant with grep intra-repo**; repo_atlas is **untestable on single-repo tasks** — needs a cross-repo substrate |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -358,17 +359,18 @@ behaviour. The binding constraints are **adoption** (0/10 unprompted, replicatin
 optimising find_related precision (a non-binding constraint for the agentic outcome) and pointed at
 the real walls.
 
-**Deferred follow-ups (re-prioritised after the lap-7 diagnosis):** (1) **Re-curate the task set —
-the confound is here.** The current tasks target an *already-existing, often already-wired* helper, so
-the correct answer is "it exists" (no diff) and grounding is penalised. Build tasks with a **genuine
-code gap** — ideally **cross-repo**, where "it already exists here" is not a valid response — so using
-the helper is the correct, creditable action. (2) **Fix the scorer to reward the right outcome:**
-credit a correct *grounded* solution (recognise/reuse existing infra) — not just a diff that calls the
-API — and don't reward redundant re-implementation; **grow N ≥ 30** to clear the ±20pp noise floor.
-(3) **Adoption (0/10)** is a separate, real finding for *locally-solvable* tasks: induce it (tool
-descriptions / a skill / surface-when-stuck) or target contexts that genuinely need cross-repo
-knowledge. (4) lower priority: the 3 still-missing symbols; pool-aware re-ranking; grounding
-stratified sampling; a doc↔source relevance model; the still-unbuilt *feed-back* stage.
+**Deferred follow-ups (re-prioritised after lap 7b — the genuine-gap re-run resolved (1) and (2)):**
+The task-recuration and scorer fixes were *built and run* (lap 7b): they worked, and the answer is
+that **intra-repo tasks can't validate repo_atlas** because baseline `grep` already solves intra-repo
+finding. So the live questions are now: (1) **Build a cross-repo substrate** — the only setting where
+the tool's hypothesis is testable: a monorepo, or a library split into producer+consumer repos, or a
+service family sharing conventions; generate+index their wikis, then write tasks whose answer lives in
+*another* repo (un-greppable from the task's repo). (2) **Or test the un-greppable-intra-repo case** —
+semantic discovery where the agent *doesn't know the lexical name* to grep (vague "how is X done here"
+intents), the one intra-repo niche where retrieval could still beat grep. (3) **Adoption (0/10)**
+remains real for locally-solvable tasks — but is moot until (1)/(2) give the tool something grep can't
+do. (4) lower priority: the 3 still-missing symbols; pool-aware re-ranking; grounding stratified
+sampling; a doc↔source relevance model; the still-unbuilt *feed-back* stage.
 
 ### Lap 7 — Outcome-driven flywheel (first real reading: a rich null)
 
@@ -452,6 +454,39 @@ instrument did its job: the cheap diagnosis **invalidated the strong reading of 
 pointed at the real fix — a task set with a *genuine code gap* (ideally cross-repo, where "it already
 exists here" is not a valid answer) and a scorer that credits a correct grounded outcome, not just a
 diff. (Adoption 0/10 stands as a separate, real finding for *locally-solvable* tasks.)
+
+### Lap 7b — Genuine-gap re-run: baseline `grep` dominates intra-repo
+
+The diagnosis prescribed two fixes, both shipped: **8 grep-verified genuine-gap tasks**
+(`tasks-genuine-gap/`: an unused/under-used helper + a concrete *absent* target site, so the correct
+answer is a new call there — "it already exists" is no longer valid) and **`GroundedUseScorer`**
+(`--scorer grounded-use`: credits the API *called* on an added line *inside the task's target files*,
+blocking the demo-file and mention-without-call gaming). Re-ran all 4 arms × 8 tasks:
+
+| arm | grounded-success | natural adoption |
+|---|---|---|
+| control (no KB) | **100%** | 0/8 |
+| optional | 100% | 0/8 |
+| forced-inject | 88% (1 miss) | — |
+| mandatory-call | 100% | 8/8 (100% surfaced) |
+
+The fixes worked — agents now produce real diffs (no more "it already exists" prose), and the scorer
+is honest. But the result **inverts** lap 7: *everyone* scores ~100%, including no-KB control. The
+prompts do **not** name the helper, yet control found it anyway — transcript-verified, it ran **6
+`grep` calls** to locate `cgeGetBlendModeName`, 2 for `slerp`, then wrote the call. **The agent's own
+`grep`/`read` already solves intra-repo "find the existing helper" — so `find_related` is redundant
+with `grep`, and adds no measurable value** (ceiling forced−control = **−12pp**, captured
+optional−control = **0pp**). Forced-inject's lone miss again shows injection can mislead.
+
+**The throughline of the whole arc (laps 5–7b):** repo_atlas cannot demonstrate value on *single-repo*
+tasks, for two compounding reasons — (1) agents don't adopt it unprompted on locally-solvable tasks
+(lap 7), and (2) even handed a genuine gap, the **baseline (the agent's own `grep`) already finds the
+helper** (lap 7b). Its value proposition is specifically **knowledge the agent cannot `grep` for** —
+genuinely cross-repo prior art, or semantic discovery where you don't know the lexical name. *Neither
+is testable with the current unrelated corpora.* **Intra-repo grounding tasks structurally cannot
+validate a cross-repo retrieval tool; a related-repo / monorepo substrate is required.** That is the
+flywheel's most important deliverable: not a score, but the realisation that the eval substrate itself
+must change before repo_atlas's core hypothesis can be tested at all.
 
 ---
 
