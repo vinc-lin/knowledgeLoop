@@ -358,16 +358,17 @@ behaviour. The binding constraints are **adoption** (0/10 unprompted, replicatin
 optimising find_related precision (a non-binding constraint for the agentic outcome) and pointed at
 the real walls.
 
-**Deferred follow-ups (re-prioritised after lap 7):** (1) **adoption is the lever, not retrieval** —
-agents won't reach for a cross-repo tool on locally-solvable tasks; options are (a) induce adoption
-(tool descriptions / a skill / surface only when locally-unsolvable), (b) target deployment contexts
-that *genuinely require* cross-repo knowledge, or (c) accept it as a forced/mandated tool — but
-mandatory-call didn't beat control either, so (b)+(measurement) come first. (2) **fix the
-outcome metric before more claims**: the grounding scorer under-credits "implement *using* X" tasks
-where the agent edits X — credit the required API anywhere in the agent's touched hunks, and/or
-curate strictly call-site tasks; and **grow N ≥ 30** to clear the ±20pp noise floor. (3) lower
-priority now: the 3 still-missing symbols; pool-aware re-ranking; grounding stratified sampling; a
-doc↔source relevance model; and the still-unbuilt *feed-back* stage of the produce→consume loop.
+**Deferred follow-ups (re-prioritised after the lap-7 diagnosis):** (1) **Re-curate the task set —
+the confound is here.** The current tasks target an *already-existing, often already-wired* helper, so
+the correct answer is "it exists" (no diff) and grounding is penalised. Build tasks with a **genuine
+code gap** — ideally **cross-repo**, where "it already exists here" is not a valid response — so using
+the helper is the correct, creditable action. (2) **Fix the scorer to reward the right outcome:**
+credit a correct *grounded* solution (recognise/reuse existing infra) — not just a diff that calls the
+API — and don't reward redundant re-implementation; **grow N ≥ 30** to clear the ±20pp noise floor.
+(3) **Adoption (0/10)** is a separate, real finding for *locally-solvable* tasks: induce it (tool
+descriptions / a skill / surface-when-stuck) or target contexts that genuinely need cross-repo
+knowledge. (4) lower priority: the 3 still-missing symbols; pool-aware re-ranking; grounding
+stratified sampling; a doc↔source relevance model; the still-unbuilt *feed-back* stage.
 
 ### Lap 7 — Outcome-driven flywheel (first real reading: a rich null)
 
@@ -426,9 +427,31 @@ Read it as a **rich null on outcomes**, with four robust findings:
    retrieval-hard tasks are also implementation-hard).
 
 **What validated:** the 4-arm harness ran end-to-end at scale, the MCP path works (10/10 forced
-adoption, 60% surfaced), and the correlation/contrasts compute. The instrument is sound — and it did
-its job: it **deflated the retrieval-optimisation thread**, showing adoption + task-completion +
-measurement-fidelity dominate the agentic outcome, not find_related precision.
+adoption, 60% surfaced), and the correlation/contrasts compute.
+
+**Diagnosis (cheap, transcript-only, no new runs) — the null is largely a TASK + SCORER artifact.**
+Reconstructing every task×arm from the persisted transcripts (edits made, API engaged-vs-called,
+prior-art surfaced) exposed the mechanism, and it is decisive:
+
+- The KB arms produced **zero edits far more often than control** (optional 6/10, forced-inject 5/10
+  vs control 3/10). Reading those no-op runs, the agents all say the *same* thing: *"the helper
+  already exists — here's how to use it."* (`convert_to_clbuffer` "already does this"; `sensormanager`
+  "implementation is already complete"; `getOutputBufferData` "already exists at line 293".) They
+  produced a **correct prose answer, not a diff.**
+- `control` "won" by the opposite behaviour: lacking that grounding it wrote **redundant** code that
+  happens to call the API — it *re-implemented* the already-existing `getOutputBufferData`, added an
+  example `convert_to_clbuffer` call in a *demo* file, re-defined an already-defined macro. The
+  grounding scorer (diff-must-call-the-API) **credits this redundant code and scores the correct
+  "it already exists" answer as 0.**
+
+So the finding-bottleneck tasks were curated around *an existing buried API* — but that very property
+makes "it already exists" the correct response, which produces no creditable diff. **Better grounding
+made the agent behave more correctly and score worse.** The control-beats-KB result measures
+willingness-to-write-redundant-code, which grounding rightly suppresses — not repo_atlas's value. The
+instrument did its job: the cheap diagnosis **invalidated the strong reading of its own null** and
+pointed at the real fix — a task set with a *genuine code gap* (ideally cross-repo, where "it already
+exists here" is not a valid answer) and a scorer that credits a correct grounded outcome, not just a
+diff. (Adoption 0/10 stands as a separate, real finding for *locally-solvable* tasks.)
 
 ---
 
