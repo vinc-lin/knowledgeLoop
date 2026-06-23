@@ -1,0 +1,46 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/libxcam):
+#
+# 1. required_api is DEFINED:
+#    $ grep -n "inline Quaternion<T> slerp" xcore/vec_mat.h
+#    1035:    inline Quaternion<T> slerp(T r, const Quaternion<T>& quat) const {
+#    (full spherical-linear-interpolation implementation, lines 1035-1063)
+#
+# 2. it has FEW callers (effectively ZERO active):
+#    $ grep -rn "slerp" . --include=*.cpp --include=*.h | grep -v "/.git/" | wc -l
+#    2
+#    $ grep -rn "slerp" . --include=*.cpp --include=*.h | grep -v "/.git/"
+#    xcore/image_projector.cpp:88:    //return Quaternd (quat[i]).slerp(weight_start, Quaternd (quat[i + 1]));   <-- COMMENTED OUT
+#    xcore/vec_mat.h:1035:    inline Quaternion<T> slerp(T r, const Quaternion<T>& quat) const {           <-- the definition
+#    => the ONLY non-definition reference is a commented-out call. slerp has 0 active callers.
+#
+# 3. the feature (spherical interpolation at the orientation-blend site) is GENUINELY ABSENT:
+#    The active line 87 hand-rolls LINEAR quaternion interpolation instead:
+#    $ sed -n '87p' xcore/image_projector.cpp
+#        return Quaternd (orientation[i] * weight_start + orientation[i + 1] * weight_end);
+#    => the interp_orientation() function blends two orientation quaternions with a raw weighted
+#       sum (lerp), never calling the existing slerp helper that sits one line below, commented out.
+#
+# 4. expected_files (target site) EXIST:
+#    $ ls -la xcore/image_projector.cpp xcore/vec_mat.h
+#    -rwxrwxrwx ... xcore/image_projector.cpp
+#    -rwxrwxrwx ... xcore/vec_mat.h
+id = "gg-libxcam-quaternion-slerp-orientation"
+kind = "dev"
+repo = "libxcam"
+prompt = "In ImageProjector::interp_orientation (xcore/image_projector.cpp), the two camera orientation quaternions are currently blended with a raw weighted sum (linear interpolation): `Quaternd (orientation[i] * weight_start + orientation[i + 1] * weight_end)`. This does not preserve unit length and is not the correct interpolation on the rotation sphere. Replace that hand-rolled linear blend with a proper spherical interpolation by calling the existing `Quaternion::slerp` method defined in xcore/vec_mat.h. Reuse that helper; do not hand-roll a new slerp (acos/sin) computation."
+rubric = "Correct iff interp_orientation interpolates the two orientation quaternions by calling the existing Quaternion::slerp (e.g. Quaternd(orientation[i]).slerp(weight, Quaternd(orientation[i+1]))) instead of the manual `orientation[i]*weight_start + orientation[i+1]*weight_end` weighted sum, and does NOT reimplement spherical interpolation inline."
+required_apis = ["slerp"]
+prior_art_files = [
+  "xcore/vec_mat.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE.
+expected_files = [
+  "xcore/image_projector.cpp",
+]
+# documentation only (load_tasks ignores unknown keys).
+gap = "Quaternion::slerp is defined in vec_mat.h:1035 but has 0 active callers (only a commented-out call at image_projector.cpp:88); interp_orientation hand-rolls linear quaternion interpolation at line 87 instead of calling slerp."

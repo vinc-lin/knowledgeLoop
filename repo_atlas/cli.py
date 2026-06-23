@@ -30,8 +30,9 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--out", default="eval-scorecard.md", help="scorecard output path")
     ev.add_argument("--limit", type=int, default=0, help="limit number of tasks (0 = all)")
     ev.add_argument("--mcp-config", help="MCP config json pointing at repo-atlas (treatment)")
-    ev.add_argument("--scorer", choices=["judge", "grounding"], default="judge",
-                    help="grounding = mechanically check the diff references required_apis (no judge)")
+    ev.add_argument("--scorer", choices=["judge", "grounding", "grounded-use"], default="judge",
+                    help="grounding = diff references required_apis (no judge); grounded-use = the "
+                         "API is CALLED on an added line inside the task's target files (genuine-gap)")
     eo = sub.add_parser("eval-offline",
                         help="deterministic retrieval+grounding eval (no agent)")
     eo.add_argument("--cases", default="repo_atlas/eval/offline/cases",
@@ -48,6 +49,9 @@ def build_parser() -> argparse.ArgumentParser:
     ea.add_argument("--arms", default="control,optional,forced-inject,mandatory-call",
                     help="comma-separated arm names")
     ea.add_argument("--proxy-k", type=int, default=10, help="symbol-retrieval cutoff for the proxy")
+    ea.add_argument("--scorer", choices=["grounding", "grounded-use"], default="grounding",
+                    help="grounded-use = API called on an added line in the task's target files "
+                         "(use with genuine-gap tasks); grounding = API referenced anywhere in the diff")
     return p
 
 
@@ -94,9 +98,9 @@ def _run_eval(args) -> int:
     registry = {e.name: e.repo_path
                 for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
     runner = ClaudeRunner(registry, args.mcp_config or "")
-    if args.scorer == "grounding":
-        from repo_atlas.eval.grounding_scorer import GroundingScorer
-        judge = GroundingScorer()
+    if args.scorer in ("grounding", "grounded-use"):
+        from repo_atlas.eval.grounding_scorer import GroundingScorer, GroundedUseScorer
+        judge = GroundedUseScorer() if args.scorer == "grounded-use" else GroundingScorer()
     else:
         judge = GatewayJudge(cfg.base_url, cfg.api_key,
                              os.environ.get("REPO_ATLAS_JUDGE_MODEL", "deepseek-chat"))
@@ -119,7 +123,7 @@ def _run_eval_arms(args) -> int:
     from repo_atlas.embed import GatewayEmbedder
     from repo_atlas.eval.tasks import load_tasks
     from repo_atlas.eval.runner import ClaudeRunner
-    from repo_atlas.eval.grounding_scorer import GroundingScorer
+    from repo_atlas.eval.grounding_scorer import GroundingScorer, GroundedUseScorer
     from repo_atlas.eval.oracle import store_exists_fn
     from repo_atlas.eval.harness import run_multi_eval
     from repo_atlas.eval.correlation import compute_proxy, correlate
@@ -146,7 +150,8 @@ def _run_eval_arms(args) -> int:
     def exists(sym: str) -> bool:
         return any(o(sym) for o in oracles.values())
 
-    sc = asyncio.run(run_multi_eval(tasks, runner, arms, GroundingScorer(), exists))
+    scorer = GroundedUseScorer() if args.scorer == "grounded-use" else GroundingScorer()
+    sc = asyncio.run(run_multi_eval(tasks, runner, arms, scorer, exists))
     proxy = asyncio.run(compute_proxy(tasks, retriever, k=args.proxy_k))
     corrs = [correlate(proxy, sc, a) for a in arms]
     md = render_multi_scorecard(sc, corrs)

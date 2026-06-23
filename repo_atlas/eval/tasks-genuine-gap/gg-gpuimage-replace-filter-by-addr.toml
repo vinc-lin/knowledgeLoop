@@ -1,0 +1,39 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW method that reuses
+# the existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/android-gpuimage-plus):
+#   - getFilterIndexByAddr(addr)->int is DEFINED but UNUSED:
+#       $ grep -rn 'getFilterIndexByAddr' library/src/main/jni --include=*.cpp --include=*.h
+#         cge/common/cgeImageHandler.h:99:    int getFilterIndexByAddr(const void* addr);
+#         cge/common/cgeImageHandler.cpp:692:int CGEImageHandler::getFilterIndexByAddr(const void* addr)
+#       real callers (grep | grep -vc decl/def) = 0
+#   - ASYMMETRY: CGEImageHandler has a delete-by-addr AND a delete-by-index, plus replace-by-INDEX,
+#     but NO replace-by-ADDR:
+#       $ grep -rn 'deleteFilterByAddr' library/src/main/jni --include=*.h
+#         cge/common/cgeImageHandler.h:101:    bool deleteFilterByAddr(const void* addr, bool bDelMem = true);
+#       $ grep -rn 'replaceFilterAtIndex' library/src/main/jni/cge/common/cgeImageHandler.cpp
+#         761:bool CGEImageHandler::replaceFilterAtIndex(... GLuint index, bool bDelMem)
+#       $ grep -rn 'replaceFilterByAddr' library/src/main/jni --include=*.cpp --include=*.h | wc -l
+#         0      # the replace-by-addr counterpart is GENUINELY ABSENT
+#   - expected_files exist:
+#       $ ls library/src/main/jni/cge/common/cgeImageHandler.{h,cpp}   # both present
+id = "gg-gpuimage-replace-filter-by-addr"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "CGEImageHandler (library/src/main/jni/cge/common/cgeImageHandler.h) can delete a filter by pointer (deleteFilterByAddr) and replace a filter by position (replaceFilterAtIndex), but there is no replace-by-pointer. Add a method `bool replaceFilterByAddr(CGEImageFilterInterfaceAbstract* proc, const void* addr, bool bDelMem = true)` that swaps in a new filter at the slot currently holding `addr`. Resolve the address to an index using the existing CGEImageHandler::getFilterIndexByAddr helper and delegate to the existing replaceFilterAtIndex — do not hand-roll a second linear search over m_vecFilters."
+rubric = "Correct iff the new replaceFilterByAddr is declared on CGEImageHandler in cgeImageHandler.h, defined in cgeImageHandler.cpp, and locates the slot via the existing getFilterIndexByAddr helper (then delegates to replaceFilterAtIndex). Incorrect if it open-codes its own loop over m_vecFilters / m_vecFilters.begin() instead of calling getFilterIndexByAddr."
+required_apis = ["getFilterIndexByAddr"]
+prior_art_files = [
+  "library/src/main/jni/cge/common/cgeImageHandler.cpp",
+  "library/src/main/jni/cge/common/cgeImageHandler.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE, not in
+# a demo/example file.
+expected_files = [
+  "library/src/main/jni/cge/common/cgeImageHandler.cpp",
+  "library/src/main/jni/cge/common/cgeImageHandler.h",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "CGEImageHandler has deleteFilterByAddr + replaceFilterAtIndex but no replaceFilterByAddr; getFilterIndexByAddr is defined with 0 callers."

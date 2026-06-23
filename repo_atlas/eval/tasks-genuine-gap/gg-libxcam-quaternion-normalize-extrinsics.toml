@@ -1,0 +1,52 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/libxcam):
+#
+# 1. required_api is DEFINED:
+#    $ grep -n "inline void normalize" xcore/vec_mat.h
+#    1016:    inline void normalize ()
+#    (Quaternion::normalize: divides w and v by magnitude(), making the quaternion unit-length, lines 1016-1021)
+#
+# 2. it has FEW callers (ZERO for the XCam Quaternion::normalize):
+#    $ grep -rn "\.normalize *(\|->normalize *(" . --include=*.cpp --include=*.h | grep -v "/.git/" | grep -v "vec_mat.h" | wc -l
+#    0
+#    (the only other `normalize` hits in the tree are cv::normalize in modules/ocv/cv_image_sharp.cpp,
+#     an unrelated OpenCV call.) => XCam Quaternion::normalize() has 0 callers anywhere.
+#
+# 3. the feature (normalizing the quaternion before building a rotation matrix) is GENUINELY ABSENT:
+#    Both ImageProjector::calc_camera_extrinsics overloads build a NON-unit quaternion by ADDING a
+#    drift quaternion to the interpolated one, then feed it straight to rotation_matrix():
+#    $ sed -n '300,303p' xcore/image_projector.cpp
+#        Quaternd quat = interp_orientation (ts, orientation, pose_ts, index) +
+#                        Quaternd (_calib_params.gyro_drift);
+#        Mat3d extrinsics = quat.rotation_matrix ();
+#    $ sed -n '347,350p' xcore/image_projector.cpp
+#        Quaternd quat = interp_orientation (ts, orientation, orient_ts, index) +
+#                        Quaternd (_calib_params.gyro_drift);
+#        Mat3d extrinsics = quat.rotation_matrix ();
+#    rotation_matrix() (vec_mat.h:1103) uses the unit-quaternion form (mat(0,0)=1-2*(yy+zz), ...),
+#    which is only a valid rotation if |quat|==1. There is NO quat.normalize() call between the
+#    sum and rotation_matrix() at either site.
+#
+# 4. expected_files (target site) EXIST:
+#    $ ls -la xcore/image_projector.cpp xcore/vec_mat.h
+#    -rwxrwxrwx ... xcore/image_projector.cpp
+#    -rwxrwxrwx ... xcore/vec_mat.h
+id = "gg-libxcam-quaternion-normalize-extrinsics"
+kind = "dev"
+repo = "libxcam"
+prompt = "In ImageProjector::calc_camera_extrinsics (xcore/image_projector.cpp, both overloads), the orientation quaternion is built by summing the interpolated orientation with the gyro-drift quaternion: `Quaternd quat = interp_orientation(...) + Quaternd(_calib_params.gyro_drift);`. This sum is no longer unit-length, yet it is passed straight to `quat.rotation_matrix()`, whose formula (mat(0,0)=1-2*(yy+zz), ...) is only a valid rotation for a UNIT quaternion. Normalize `quat` to unit length before calling rotation_matrix() by invoking the existing `Quaternion::normalize` method defined in xcore/vec_mat.h. Reuse that helper at both sites; do not hand-roll the magnitude division inline."
+rubric = "Correct iff a call to the existing Quaternion::normalize (e.g. quat.normalize()) is inserted on the summed quaternion before quat.rotation_matrix() in calc_camera_extrinsics, rather than dividing by the magnitude by hand or leaving the quaternion un-normalized."
+required_apis = ["normalize"]
+prior_art_files = [
+  "xcore/vec_mat.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE.
+expected_files = [
+  "xcore/image_projector.cpp",
+]
+# documentation only (load_tasks ignores unknown keys).
+gap = "Quaternion::normalize is defined in vec_mat.h:1016 but has 0 callers; calc_camera_extrinsics feeds a non-unit quaternion (interp_orientation + gyro_drift) straight into rotation_matrix() at lines 300-303 and 347-350 without ever normalizing it."

@@ -1,0 +1,27 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/android-gpuimage-plus):
+#   - cgeGetBlendModeName(mode) is DEFINED (cgeCommonDefine.cpp:59) but has 0 callers — unused.
+#   - CGEBlendInterface exposes getBlendModeByName(name)->mode but has NO inverse (mode->name);
+#     getBlendModeName: 0 occurrences in the tree. The asymmetry IS the gap.
+id = "gg-gpuimage-blend-mode-inverse-name"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "CGEBlendInterface (library/src/main/jni/cge/filters/cgeBlendFilter.h) provides the name->mode lookup `getBlendModeByName(const char* name)` but has no inverse. Add a static method `getBlendModeName(CGETextureBlendMode mode)` to CGEBlendInterface returning the canonical name string for a blend mode — the symmetric counterpart of getBlendModeByName. Reuse the project's existing mode<->name table; do not hand-roll a new switch."
+rubric = "Correct iff the new getBlendModeName is wired to the existing cgeGetBlendModeName helper (not a hand-rolled switch/table), declared on CGEBlendInterface in cgeBlendFilter.h and defined in cgeBlendFilter.cpp."
+required_apis = ["cgeGetBlendModeName"]
+prior_art_files = [
+  "library/src/main/jni/cge/common/cgeCommonDefine.cpp",
+  "library/src/main/jni/cge/common/cgeCommonDefine.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE, not in
+# a demo/example file (the lap-7 control "win" gamed the old scorer by calling it in cl_demo_*).
+expected_files = [
+  "library/src/main/jni/cge/filters/cgeBlendFilter.cpp",
+  "library/src/main/jni/cge/filters/cgeBlendFilter.h",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "CGEBlendInterface has getBlendModeByName (name->mode) but no mode->name; cgeGetBlendModeName exists with 0 callers."

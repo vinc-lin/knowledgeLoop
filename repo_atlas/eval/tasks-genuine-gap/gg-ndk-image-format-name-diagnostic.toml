@@ -1,0 +1,46 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# ASYMMETRY gap (2026-06-23, grep on /mnt/x/code/corpora/ndk-samples):
+#   camera-utils ships three parallel enum->string translators built on the same GetPairStr table
+#   pattern. Two are PUBLIC (in the header) and used; the AIMAGE-format one is private + unused:
+#     - GetErrorStr(camera_status_t)        -> public  (camera_utils.h:44), used
+#     - GetTagStr(acamera_metadata_tag_t)   -> public  (camera_utils.h:45), used
+#     - GetFormatStr(int)                   -> NOT in the header; defined camera_utils.cpp:286,
+#                                              only 1 internal caller (PrintStreamConfigurations).
+#   1. required_api is DEFINED:
+#        $ grep -rn "GetFormatStr" --include=*.cpp --include=*.h .
+#        camera/camera-utils/.../camera_utils.cpp:286:const char* GetFormatStr(int fmt) { return GetPairStr<int>(fmt, formatInfo); }
+#        camera/camera-utils/.../camera_utils.cpp:320:    ... GetFormatStr(val.data.i32[i]) ...   (the lone internal use)
+#   2. FEW callers — exactly 1, and it is internal to camera_utils.cpp; not exposed in the header:
+#        $ grep -n "GetFormatStr" camera/camera-utils/.../include/.../camera_utils.h  -> NOT in header
+#   3. Feature GENUINELY ABSENT at the target site:
+#        $ grep -rn "GetFormatStr" camera/basic/src/main/cpp/   ->  (no hits)
+#      camera/basic/src/main/cpp/image_reader.cpp:216 asserts the source image format equals
+#      AIMAGE_FORMAT_YUV_420_888 with the message "Failed to get format" — the message prints NO
+#      info about the format actually received (srcFormat), even though a format->name translator
+#      exists for exactly this.
+#   4. expected_files EXIST:
+#        camera/basic/src/main/cpp/image_reader.cpp
+#        camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h
+#      (image_reader.cpp does NOT yet include camera_utils.h, and GetFormatStr is not in that
+#       header, so wiring it in also means exposing GetFormatStr publicly — the symmetric
+#       counterpart of GetErrorStr/GetTagStr.)
+id = "gg-ndk-image-format-name-diagnostic"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "In camera/basic/src/main/cpp/image_reader.cpp, ImageReader::DisplayImage() asserts the source frame is AIMAGE_FORMAT_YUV_420_888 with `ASSERT(AIMAGE_FORMAT_YUV_420_888 == srcFormat, \"Failed to get format\")` — but the message reports no information about the format that was actually received, so an unexpected format is undiagnosable. Make that assertion message include the human-readable name of the received srcFormat. camera-utils already has the format->name translator GetFormatStr(int) — the symmetric counterpart of the public GetErrorStr/GetTagStr — but it is not exposed in the public header; expose it and reuse it here. Do not hand-roll a new switch/if-chain over AIMAGE_FORMAT_* values."
+rubric = "Correct iff the assertion message in ImageReader::DisplayImage (camera/basic/src/main/cpp/image_reader.cpp) is enriched by calling the existing GetFormatStr(srcFormat) helper (declared in camera-utils' public header and reused, not a hand-rolled AIMAGE_FORMAT_* switch/lookup)."
+required_apis = ["GetFormatStr"]
+prior_art_files = [
+  "camera/camera-utils/src/main/cpp/camera_utils.cpp",
+  "camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE.
+expected_files = [
+  "camera/basic/src/main/cpp/image_reader.cpp",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "GetErrorStr/GetTagStr are public+used; the sibling GetFormatStr(int) is private with 1 internal caller and never exposed — image_reader's 'Failed to get format' assert prints no format name despite the translator existing."

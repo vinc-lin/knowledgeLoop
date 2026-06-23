@@ -1,0 +1,39 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/android-gpuimage-plus):
+#   - cgeGetVersion() is DEFINED but has ZERO callers (only its own decl + def + the CGE_VERSION
+#     macro it returns):
+#       $ grep -rn 'cgeGetVersion\|CGE_VERSION' library/src/main/jni --include=*.cpp --include=*.h
+#         cge/common/cgeCommonDefine.h:338:const char* cgeGetVersion();
+#         cge/common/cgeCommonDefine.cpp:13:#define CGE_VERSION "3.0.0"
+#         cge/common/cgeCommonDefine.cpp:49:const char* cgeGetVersion()
+#         cge/common/cgeCommonDefine.cpp:51:    return CGE_VERSION;
+#       real callers = 0
+#   - The native entry point JNI_OnLoad (interface/cgeNativeLibrary.cpp:74) logs init progress
+#     ("JNI_OnLoad called. cgeGl3StubInit called.") but NEVER reports the library version:
+#       $ grep -rn 'Version\|version' library/src/main/jni/interface/cgeNativeLibrary.cpp
+#         (only two unrelated comment lines about Android 16KB-page version; no cgeGetVersion call)
+#   - cgeGetVersion is already visible in this TU: cgeNativeLibrary.cpp includes cgeGLFunctions.h,
+#     which includes cgeCommonDefine.h (where cgeGetVersion is declared) — no new include required.
+#   - expected_files exist:
+#       $ ls library/src/main/jni/interface/cgeNativeLibrary.cpp   # present
+id = "gg-gpuimage-log-version-on-load"
+kind = "dev"
+repo = "android-gpuimage-plus"
+prompt = "The native entry point JNI_OnLoad in library/src/main/jni/interface/cgeNativeLibrary.cpp logs initialization progress but never reports which build of the library was loaded, which makes field bug reports ambiguous. Add a log line in JNI_OnLoad that reports the library version. Use the existing cgeGetVersion() accessor (which returns the CGE_VERSION string) via the project's CGE_LOG_INFO macro — do not hard-code the version literal \"3.0.0\" or re-read the CGE_VERSION macro directly."
+rubric = "Correct iff JNI_OnLoad (in cgeNativeLibrary.cpp) gains a log statement whose version value comes from a call to cgeGetVersion(). Incorrect if it hard-codes the \"3.0.0\" literal, references the CGE_VERSION macro directly, or adds the call anywhere other than the native-load path in this file."
+required_apis = ["cgeGetVersion"]
+prior_art_files = [
+  "library/src/main/jni/cge/common/cgeCommonDefine.cpp",
+  "library/src/main/jni/cge/common/cgeCommonDefine.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE, not in
+# a demo/example file.
+expected_files = [
+  "library/src/main/jni/interface/cgeNativeLibrary.cpp",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "cgeGetVersion() is defined with 0 callers; JNI_OnLoad logs init but never reports the library version."

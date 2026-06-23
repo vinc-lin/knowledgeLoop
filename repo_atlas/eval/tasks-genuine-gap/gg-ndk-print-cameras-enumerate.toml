@@ -1,0 +1,39 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/ndk-samples):
+#   1. required_api is DEFINED:
+#        $ grep -rn "void PrintCameras" camera/camera-utils/.../camera_utils.cpp
+#        camera/camera-utils/src/main/cpp/camera_utils.cpp:363:void PrintCameras(ACameraManager* cmrMgr) {
+#      and DECLARED in the public header:
+#        camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h:48:void PrintCameras(ACameraManager* cameraMgr);
+#   2. ZERO callers — grep across the whole repo finds only the def + the decl:
+#        $ grep -rn "PrintCameras" --include=*.cpp --include=*.h .
+#        camera/camera-utils/.../camera_utils.cpp:363  (definition)
+#        camera/camera-utils/.../camera_utils.h:48     (declaration)
+#      No call site anywhere — the camera-enumeration diagnostic dumper is never used.
+#   3. Feature GENUINELY ABSENT at the target site:
+#        $ grep -rn "PrintCameras" camera/basic/src/main/cpp/   ->  (no hits)
+#      camera/basic's NDKCamera constructor calls ACameraManager_create() then EnumerateCamera()
+#      (camera_manager.cpp:48,52) to pick a back-facing camera, but never logs the set of cameras
+#      and their characteristics available on the device.
+#   4. expected_files EXIST and already #include the header (no new include needed):
+#        camera/basic/src/main/cpp/camera_manager.cpp:19:#include <ndksamples/camera/camera_utils.h>
+id = "gg-ndk-print-cameras-enumerate"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "In camera/basic/src/main/cpp/camera_manager.cpp, the NDKCamera constructor creates the ACameraManager (ACameraManager_create) and then calls EnumerateCamera() to pick a camera, but it never logs which cameras and characteristics are available on the device — making device-capability bugs hard to diagnose. Add a one-line diagnostic that enumerates and logs all cameras + their metadata right after the camera manager is created in the constructor. Reuse the project's existing camera-enumeration dumper helper from camera-utils — do not hand-roll a new getCameraIdList/getCameraCharacteristics loop."
+rubric = "Correct iff the new diagnostic call invokes the existing PrintCameras(ACameraManager*) helper on cameraMgr_ inside the NDKCamera::NDKCamera() constructor in camera/basic/src/main/cpp/camera_manager.cpp, NOT a hand-rolled getCameraIdList/getCameraCharacteristics enumeration."
+required_apis = ["PrintCameras"]
+prior_art_files = [
+  "camera/camera-utils/src/main/cpp/camera_utils.cpp",
+  "camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE.
+expected_files = [
+  "camera/basic/src/main/cpp/camera_manager.cpp",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "PrintCameras(ACameraManager*) is declared+defined in camera-utils but has 0 callers repo-wide; camera/basic's constructor creates the manager and enumerates cameras yet never dumps the available cameras."

@@ -1,0 +1,39 @@
+# GENUINE-GAP grounding task. Unlike tasks-grounding/ (where the helper already exists *and is
+# wired*, so a grounded agent correctly answers "it already exists" and writes no diff), here the
+# feature is VERIFIED ABSENT at a concrete site, so the correct solution is a NEW call to the
+# existing helper — and "it already exists" is not a valid complete answer.
+#
+# Verified gap (2026-06-23, grep on /mnt/x/code/corpora/ndk-samples):
+#   1. required_api is DEFINED:
+#        $ grep -rn "void PrintRequestMetadata" camera/camera-utils/.../camera_utils.cpp
+#        camera/camera-utils/src/main/cpp/camera_utils.cpp:402:void PrintRequestMetadata(ACaptureRequest* req) {
+#      and DECLARED in the public header:
+#        camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h:51:void PrintRequestMetadata(ACaptureRequest* req);
+#   2. ZERO callers — grep across the whole repo finds only the def + the decl:
+#        $ grep -rn "PrintRequestMetadata" --include=*.cpp --include=*.h .
+#        camera/camera-utils/.../camera_utils.cpp:402  (definition)
+#        camera/camera-utils/.../camera_utils.h:51     (declaration)
+#      No call site anywhere. (GetTagStr is heavily used; this sibling debug helper never is.)
+#   3. Feature GENUINELY ABSENT at the target site:
+#        $ grep -rn "PrintRequestMetadata" camera/basic/src/main/cpp/   ->  (no hits)
+#      camera/basic's NDKCamera::CreateSession builds + configures two ACaptureRequest objects
+#      (createCaptureRequest, addTarget, setEntry_u8/i32/i64 at lines 224-265) but never dumps
+#      the assembled request metadata for diagnostics.
+#   4. expected_files EXIST and already #include the header (no new include needed):
+#        camera/basic/src/main/cpp/camera_manager.cpp:19:#include <ndksamples/camera/camera_utils.h>
+id = "gg-ndk-print-request-metadata"
+kind = "dev"
+repo = "ndk-samples"
+prompt = "In camera/basic/src/main/cpp/camera_manager.cpp, NDKCamera::CreateSession() builds and configures the PREVIEW capture request (createCaptureRequest + addTarget, then setEntry_u8/i32/i64 for AE_MODE, SENSOR_SENSITIVITY and SENSOR_EXPOSURE_TIME) but never logs the assembled request's metadata, so there is no way to confirm the parameters that were actually set. Add a diagnostic dump of the fully-configured preview request at the end of CreateSession(). Reuse the project's existing capture-request dumper helper from camera-utils — do not hand-roll a new ACaptureRequest_getAllTags/getConstEntry loop."
+rubric = "Correct iff the new diagnostic call invokes the existing PrintRequestMetadata(ACaptureRequest*) helper on the configured preview request (requests_[PREVIEW_REQUEST_IDX].request_) inside NDKCamera::CreateSession in camera/basic/src/main/cpp/camera_manager.cpp, NOT a hand-rolled tag-iteration/logging loop."
+required_apis = ["PrintRequestMetadata"]
+prior_art_files = [
+  "camera/camera-utils/src/main/cpp/camera_utils.cpp",
+  "camera/camera-utils/src/main/cpp/include/ndksamples/camera/camera_utils.h",
+]
+# expected_files doubles as the GroundedUseScorer target site: the new call must land HERE.
+expected_files = [
+  "camera/basic/src/main/cpp/camera_manager.cpp",
+]
+# documentation only (load_tasks ignores unknown keys); promote to a Task field if we formalise it.
+gap = "PrintRequestMetadata(ACaptureRequest*) is declared+defined in camera-utils but has 0 callers repo-wide; camera/basic CreateSession configures the preview request yet never dumps it."
