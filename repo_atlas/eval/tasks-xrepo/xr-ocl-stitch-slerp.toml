@@ -1,0 +1,11 @@
+# CROSS-REPO genuine-gap task. Quaternion::slerp is defined in libxcam-core (vec_mat.h),
+# 0 hits in libxcam-ocl. Verified 2026-06-24.
+id = "xr-ocl-stitch-slerp"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In the 360 stitch handler (cl_image_360_stitch.cpp), when blending between two adjacent camera views' orientations, interpolate the two orientation quaternions smoothly by the blend weight instead of doing a component-wise linear blend. Use the library's existing spherical quaternion-interpolation helper."
+rubric = "Correct iff it uses the library's existing Quaternion::slerp (from shared xcore vec_mat.h) rather than hand-rolling linear quaternion interpolation."
+required_apis = ["slerp"]
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_image_360_stitch.cpp"]
+gap = "Quaternion::slerp is in libxcam-core (vec_mat.h), ABSENT from the libxcam-ocl snapshot -> reachable only via find_related."

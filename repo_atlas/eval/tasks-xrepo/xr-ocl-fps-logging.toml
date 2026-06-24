@@ -1,0 +1,14 @@
+# CROSS-REPO genuine-gap task. The required helper lives in the SHARED LIBRARY repo (libxcam-core),
+# which is NOT in this repo's (libxcam-ocl) work-tree snapshot -> un-greppable from A. The agent can
+# only discover it via repo_atlas find_related (which indexes both repos). control (grep A) cannot
+# find it; a KB arm can. Verified 2026-06-24: XCAM_STATIC_FPS_CALCULATION defined in libxcam-core
+# (xcam_obj_debug.h), 0 hits in libxcam-ocl; cl_image_handler.cpp has execute() and no FPS/timing.
+id = "xr-ocl-fps-logging"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In the base CL image handler (cl_image_handler.cpp), add per-handler throughput logging that prints the processing frame-rate every N frames inside the execute() path. Use the project's existing profiling / FPS helper rather than hand-rolling gettimeofday timing."
+rubric = "Correct iff it uses the project's existing XCAM_STATIC_FPS_CALCULATION profiling macro (from the shared xcore library) instead of hand-rolling timing."
+required_apis = ["XCAM_STATIC_FPS_CALCULATION"]
+prior_art_files = ["xcam_obj_debug.h"]
+expected_files = ["cl_image_handler.cpp"]
+gap = "XCAM_STATIC_FPS_CALCULATION is in libxcam-core (xcam_obj_debug.h), ABSENT from the libxcam-ocl snapshot -> reachable only via find_related, not grep."

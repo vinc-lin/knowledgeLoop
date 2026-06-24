@@ -1,0 +1,11 @@
+# CROSS-REPO genuine-gap task. xcam_set_log is defined in libxcam-core (base/xcam_common.h),
+# 0 hits in libxcam-ocl. Verified 2026-06-24. Target ctor CLImageProcessor::CLImageProcessor.
+id = "xr-ocl-log-to-file"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "Add a way to redirect XCam's diagnostic log output to a file when a CL image processor is constructed (cl_image_processor.cpp) — e.g. driven by an env var read in the constructor. Use the library's existing log-redirection helper rather than reimplementing file logging."
+rubric = "Correct iff it calls the library's existing xcam_set_log helper (from shared xcore) rather than hand-rolling fopen/file logging."
+required_apis = ["xcam_set_log"]
+prior_art_files = ["base/xcam_common.h"]
+expected_files = ["cl_image_processor.cpp"]
+gap = "xcam_set_log is in libxcam-core (base/xcam_common.h), ABSENT from the libxcam-ocl snapshot -> reachable only via find_related."
