@@ -165,6 +165,7 @@ Every improvement followed one loop:
 | 6 | **Symbol-text enrichment** → leaner, deterministic rank-check | **6a (+body): net-neutral** (top-10 3→3); **6b (doc+sig, no body): WIN** — top-10 3→**6/11**, surfaced 6→**8/11**, mean rank 51.5→41.5 | the body dilutes a strong name-anchored match; **doc-comment + signature is pure signal → shipped as the default** |
 | 7 | **Outcome-driven flywheel** — 4-arm agentic eval + proxy↔outcome correlation (FIRST READING, N=10) | **rich NULL on outcomes**: grounded-success control **40%** ≥ mandatory-call 30% ≥ optional 20% = forced-inject 20%; **natural adoption 0/10** (verified), forced 10/10; proxy does **not** predict outcome | the binding constraint is **adoption + task-completion**, not retrieval; KB arms don't beat control; **±20pp N=10 noise floor** (optional≡control behaviourally yet differ 20pp) |
 | 7b | **Genuine-gap re-run** — 8 grep-verified gap tasks + `GroundedUseScorer` (target-site, anti-gaming), 4 arms × 8 | **inverts to ~100% on ALL arms** incl. no-KB control; ceiling forced−control **−12pp**, captured optional−control **0pp** | control finds the helper **itself via `grep`** (6 calls, transcript-verified) → find_related is **redundant with grep intra-repo**; repo_atlas is **untestable on single-repo tasks** — needs a cross-repo substrate |
+| 7c | **Cross-repo MVP** — libxcam split into `core`(library)+`ocl`(consumer), helper un-greppable from the task's repo, 3 tasks (1 timed out) | **first positive**: mandatory-call **100%** vs control **50%** (+50pp); the win is **airtight** on the non-guessable helper — find_related surfaced `XCAM_STATIC_FPS_CALCULATION` from the *other* repo, agent used it; control couldn't | repo_atlas's value is **real but narrow + gated**: non-obvious cross-repo helpers only (proven), null intra-repo, unlocked only by **forced adoption** (optional still 0/2) |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -487,6 +488,49 @@ is testable with the current unrelated corpora.* **Intra-repo grounding tasks st
 validate a cross-repo retrieval tool; a related-repo / monorepo substrate is required.** That is the
 flywheel's most important deliverable: not a score, but the realisation that the eval substrate itself
 must change before repo_atlas's core hypothesis can be tested at all.
+
+### Lap 7c — Cross-repo MVP: the first genuine positive signal
+
+Built the substrate lap 7b prescribed. Split libxcam into two standalone repos — **`libxcam-core`**
+(the `xcore/` library, 2249 indexed units) and **`libxcam-ocl`** (the `modules/ocl/` consumer, 1663
+units) — both in one cross-repo `atlas-xrepo.db`. The agent's task runs in `ocl`'s snapshot, which
+**excludes** `xcore`; `find_related` spans both. So a helper in `xcore` is **un-greppable from the
+agent's work tree** and reachable only through the KB — exactly the asymmetry intra-repo tasks lacked.
+Three cross-repo tasks (a feature in `ocl` whose helper lives in `xcore`); MVP run control / optional
+/ mandatory-call (the 360-stitch task timed out → N=2):
+
+| arm | grounded-success | adoption |
+|---|---|---|
+| control (grep only) | 50% | 0/2 |
+| optional | 50% | 0/2 |
+| **mandatory-call** (forced cross-repo retrieval) | **100%** | 2/2 |
+
+**`mandatory-call − control = +50pp` — the first positive KB contrast in the whole arc** — and it is
+**mechanistically airtight** on the one discriminating task. On `xr-ocl-fps-logging` (helper
+`XCAM_STATIC_FPS_CALCULATION`, a *non-guessable* macro): control made **0** `find_related` calls,
+never found the macro, failed; the **mandatory-call** agent queried `find_related` with *"CL image
+handler execute throughput FPS profiling logging frame rate"*, **the tool surfaced the macro from the
+*other* repo (`libxcam-core`)**, and the agent wrote `XCAM_STATIC_FPS_CALCULATION(get_name(), …)` into
+`cl_image_handler.cpp`. repo_atlas did something **grep and model-knowledge could not** — surface a
+non-obvious helper from a sibling repo. That is the core hypothesis, finally demonstrated.
+
+**Honest calibration — this is proof-of-mechanism, not a statistical result:**
+- **N=2, one discriminating task.** The second task's helper (`xcam_set_log`) has a *guessable*
+  conventional name, so *all* arms produced the call (control/optional by guessing, `find_related=0`)
+  — it doesn't discriminate. The third (slerp in the 360-stitch handler) **timed out**.
+- **Adoption is still the gate.** `optional` (KB available, no directive) had **0/2 adoption** — agents
+  *still* don't reach for the KB unprompted, even when the answer is genuinely out of local reach. The
+  win materialised only under **forced** retrieval (`mandatory-call`).
+- **Task craft matters:** helpers must be non-guessable (not `xcam_set_log`), and tasks small enough
+  not to time out (not the 360-stitch monster).
+
+**The arc resolves.** repo_atlas's value is **real but narrow and gated**: it helps with *non-obvious,
+cross-repo* helpers (proven here), is **null intra-repo** (grep dominates, lap 7b), and is **unlocked
+only by adoption** (agents won't retrieve unprompted, laps 7/7c). The productive next steps are now
+concrete: (1) **scale the cross-repo substrate** — more non-guessable helpers, smaller tasks, N ≥ 20,
+ideally a second library/consumer pair — for a statistical result; (2) **solve adoption** — make the
+agent retrieve when its local context is insufficient (close the `optional`→`mandatory` gap), since
+that is the only thing standing between the proven mechanism and real deployment value.
 
 ---
 
