@@ -153,7 +153,7 @@ Every improvement followed one loop:
 
 ## Part III — Evaluation Results
 
-### Timeline (one loop, seven laps)
+### Timeline (one loop, eight laps)
 
 | Lap | Instrument | Result | Lesson |
 |---|---|---|---|
@@ -166,6 +166,7 @@ Every improvement followed one loop:
 | 7 | **Outcome-driven flywheel** — 4-arm agentic eval + proxy↔outcome correlation (FIRST READING, N=10) | **rich NULL on outcomes**: grounded-success control **40%** ≥ mandatory-call 30% ≥ optional 20% = forced-inject 20%; **natural adoption 0/10** (verified), forced 10/10; proxy does **not** predict outcome | the binding constraint is **adoption + task-completion**, not retrieval; KB arms don't beat control; **±20pp N=10 noise floor** (optional≡control behaviourally yet differ 20pp) |
 | 7b | **Genuine-gap re-run** — 8 grep-verified gap tasks + `GroundedUseScorer` (target-site, anti-gaming), 4 arms × 8 | **inverts to ~100% on ALL arms** incl. no-KB control; ceiling forced−control **−12pp**, captured optional−control **0pp** | control finds the helper **itself via `grep`** (6 calls, transcript-verified) → find_related is **redundant with grep intra-repo**; repo_atlas is **untestable on single-repo tasks** — needs a cross-repo substrate |
 | 7c | **Cross-repo MVP** — libxcam split into `core`(library)+`ocl`(consumer), helper un-greppable from the task's repo, 3 tasks (1 timed out) | **first positive**: mandatory-call **100%** vs control **50%** (+50pp); the win is **airtight** on the non-guessable helper — find_related surfaced `XCAM_STATIC_FPS_CALCULATION` from the *other* repo, agent used it; control couldn't | repo_atlas's value is **real but narrow + gated**: non-obvious cross-repo helpers only (proven), null intra-repo, unlocked only by **forced adoption** (optional still 0/2) |
+| 8 | **Scaled cross-repo ceiling** — control vs forced-inject over **15 non-guessable tasks across two codebases** (libxcam 10 + gpuimage 5), quota-validated | **clean +60pp ceiling**: control **1/15 (7%)** → forced-inject **10/15 (67%)** (libxcam +50pp, gpuimage +80pp) | the cross-repo value is **real & powered** — shown the un-greppable helper the agent uses it ⅔ of the time; the no-KB baseline structurally can't reach it. Adoption arms deferred (Claude **session-limit** is the eval budget) |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -317,6 +318,11 @@ adoption (0/10 unprompted) + task-completion, not symbol-retrieval rank.
 ## Part IV — Honest Assessment
 
 **What is genuinely established:**
+- **The cross-repo ceiling is real and powered (lap 8).** Across **15 non-guessable tasks in two
+  codebases**, surfacing the un-greppable cross-repo helper lifts grounded success from **7% → 67%
+  (+60pp)**; the no-KB baseline structurally cannot reach it (1/15, a guessed API). This is the clean,
+  scaled, quota-validated confirmation of lap 7c — the core hypothesis (cross-repo knowledge helps
+  *when surfaced*) holds. What remains open is **adoption** (will the agent fetch it unprompted).
 - A **deterministic measurement loop** that localizes problems and tunes the system with instant
   feedback — far more reliable than the noisy agentic A/B.
 - **Two measured product improvements** (rebalance, multi-gold) with traceable causes, each built
@@ -531,6 +537,48 @@ concrete: (1) **scale the cross-repo substrate** — more non-guessable helpers,
 ideally a second library/consumer pair — for a statistical result; (2) **solve adoption** — make the
 agent retrieve when its local context is insufficient (close the `optional`→`mandatory` gap), since
 that is the only thing standing between the proven mechanism and real deployment value.
+
+### Lap 8 — Scaled cross-repo ceiling: the value is real and powered (2026-06-27)
+
+Built what lap 7c prescribed, at scale, and fixed the instruments. **(c)** The ceiling arm now works
+cross-repo: `forced-inject` and the offline proxy retrieve across **all** repos (`repos=None`) with a
+focused, intent-only `retrieval_query` (authored per task; a guard test forbids it from naming the
+answer API), and inject the top-20 (`--inject-k 20`) so the ceiling sees what `find_related` returns.
+**(a)** Scaled to **31 cross-repo tasks** — 22 libxcam (`tasks-xrepo`) plus a **second** library/
+consumer pair, **gpuimage** (`tasks-xrepo-gpuimage`: android-gpuimage-plus's `cge` library split from
+its JNI/custom-filter consumer) — each a non-guessable helper verified 0-hit in the consumer snapshot
+and pre-screened reachable via `find_related`. **(b)** Added an insufficiency-gated soft-nudge
+`assisted` arm + `find_related` legibility, and a harness fix so a **timed-out arm scores as a failure**
+instead of raising and dropping the whole task.
+
+**Result — ceiling (control vs forced-inject), N=15 non-guessable tasks across two codebases, quota-clean:**
+
+| codebase | N | control | forced-inject | ceiling |
+|---|---|---|---|---|
+| libxcam  | 10 | 0%  | 50%  | **+50pp** |
+| gpuimage | 5  | 20% | 100% | **+80pp** |
+| **pooled** | **15** | **7%** (1/15) | **67%** (10/15) | **+60pp** |
+
+The no-KB baseline succeeds **once in fifteen** (and that one is a *guessed* cge API); the agent
+**shown** the un-greppable cross-repo prior art uses the exact helper in the target file **two-thirds**
+of the time. This promotes lap 7c from proof-of-mechanism to a **powered, two-codebase** result:
+surfacing genuinely un-greppable cross-repo knowledge produces a large, real lift the agent cannot
+otherwise reach.
+
+**Operational finding — the Claude session limit is the real eval budget.** The first attempt ran all
+31 tasks × 5 arms (155 runs) with three drivers concurrently; it exhausted the subscription quota
+mid-run, so **128/155 agents returned *"you've hit your session limit"* and no diff** — a washed-out
+null that is a *quota artifact*, not a verdict (the orchestration subagents draw on the same quota).
+The fix: run **sequentially**, sized to ~35 substantive runs per window, and **verify every run did
+real work** (transcript turn-counts) before trusting a scorecard. The numbers above are from clean,
+quota-validated windows (0 limit-hits, all runs 15–81 assistant turns).
+
+**Deferred (quota-bound):** the **adoption** arms — `optional` (natural), `assisted` (gated nudge),
+`mandatory-call` — i.e. *will the agent fetch this ceiling unprompted, or with a light-touch nudge?*
+The over-steering half is already checked: on local (in-tree) tasks the `assisted` gate stays silent —
+turns **9.5 = control 9.5**, 0 nudges — so the nudge does not over-steer locally-solvable work. The
+cross-repo adoption-capture measurement (does `assisted` approach the ceiling without the `mandatory`
+tax) needs further quota windows.
 
 ---
 
