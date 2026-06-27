@@ -2,7 +2,8 @@ import json
 
 import pytest
 from repo_atlas.eval.runner import (RunResult, StubRunner, ClaudeRunner, NUDGE,
-                                    _count_atlas_in_transcript, format_injection)
+                                    _count_atlas_in_transcript, format_injection,
+                                    SessionLimitReached, _is_session_limit)
 from repo_atlas.eval.tasks import Task
 
 
@@ -169,3 +170,16 @@ async def test_inject_text_uses_focused_query_and_all_repos():
     await r._inject_text(t)
     assert rec.last_query == "cl image handler fps profiling"   # focused query, not prompt
     assert rec.last_repo is None                                # all repos, not task.repo
+
+
+def test_is_session_limit_matches_quota_messages():
+    assert _is_session_limit("You've hit your session limit · resets 8pm (Asia/Shanghai)") is True
+    assert _is_session_limit("Claude usage limit reached") is True
+    assert _is_session_limit("SESSION LIMIT") is True                      # case-insensitive
+
+
+def test_is_session_limit_ignores_normal_output():
+    assert _is_session_limit('{"result":"done","is_error":false,"num_turns":7}') is False
+    assert _is_session_limit("I changed the buffer rate of the encoder.") is False
+    assert _is_session_limit("") is False
+    assert _is_session_limit(None) is False                                # tolerates None

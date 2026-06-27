@@ -71,6 +71,24 @@ ARMS = {
 }
 
 
+class SessionLimitReached(Exception):
+    """The `claude` CLI reported the subscription session/usage limit. Distinct from an ordinary
+    run failure: once it fires, every subsequent run also fails, so the eval must STOP cleanly
+    rather than score the limit message as a grounded-success failure."""
+
+
+# Substrings (lowercased) that mark a Claude quota/limit message in the CLI output.
+_SESSION_LIMIT_PHRASES = (
+    "hit your session limit", "session limit", "usage limit", "limit · resets", "limit reached",
+)
+
+
+def _is_session_limit(text) -> bool:
+    """True iff `text` contains a known Claude session/usage-limit phrase (case-insensitive)."""
+    t = (text or "").lower()
+    return any(p in t for p in _SESSION_LIMIT_PHRASES)
+
+
 def _count_atlas_in_transcript(path: str) -> int:
     """Count repo_atlas MCP tool_use calls in a Claude Code session transcript (.jsonl).
 
