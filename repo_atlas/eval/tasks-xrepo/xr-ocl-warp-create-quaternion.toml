@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: create_quaternion has 0 hits across libxcam-ocl source but 9 hits in libxcam-core (defined in vec_mat.h, used in image_projector.cpp and calibration_parser.cpp); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related.
+id = "xr-ocl-warp-create-quaternion"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_image_warp_handler.cpp, add a small static helper used by CLImageWarpHandler that takes yaw/pitch/roll euler angles (in radians) and returns the corresponding rotation quaternion (a Quaternd). Use the project's existing helper for constructing a quaternion from euler angles instead of hand-rolling the conversion math, so the warp config can later derive its transform from a rotation rather than a raw matrix."
+rubric = "Pass iff the added code calls create_quaternion (the free template function from libxcam-core vec_mat.h) passing a single Vec3/VectorN<T,3> of euler angles (the (VectorN<T,3> euler) overload), producing a Quaternion/Quaternd. Fail if it hand-rolls quaternion math, invents a different name (e.g. eulerToQuaternion, makeQuaternion, Quaternion::fromEuler), or uses the axis+angle overload without composing euler. Bonus: includes vec_mat.h."
+required_apis = ["create_quaternion"]
+retrieval_query = "helper to construct a rotation quaternion from yaw pitch roll euler angles in the shared libxcam math library"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_image_warp_handler.cpp"]
+gap = "Verified 2026-06-27: create_quaternion has 0 hits across libxcam-ocl source but 9 hits in libxcam-core (defined in vec_mat.h, used in image_projector.cpp and calibration_parser.cpp); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related."

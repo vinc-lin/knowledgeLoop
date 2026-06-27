@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: linear_interpolate_p2 has 0 hits across libxcam-ocl source (cpp/h/cl) but 2 hits in libxcam-core (defined/declared in xcam_utils.h); core is excluded from the OCL snapshot so the symbol is reachable only via cross-repo find_related.
+id = "xr-ocl-tonemap-interp2"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_tonemapping_handler.cpp, inside CLTonemappingImageHandler::prepare_parameters, the y_target value is currently computed by hand-rolling the blend that maps the histogram luminance statistic onto the target luminance. Replace that inline math with the project's existing helper for two-point linear interpolation (interpolating a value between a start and end value given a start/end reference and the current reference position), instead of open-coding the blend yourself."
+rubric = "Pass iff the edit calls linear_interpolate_p2 (declared in core xcam_utils.h, signature double linear_interpolate_p2(double value_start, double value_end, double ref_start, double ref_end, double ref_curr)) at the y_target computation site in cl_tonemapping_handler.cpp, with arguments in the correct order, rather than inlining its own lerp or writing a new helper. Fail if it hand-rolls interpolation, invents a differently-named helper, or uses linear_interpolate_p4."
+required_apis = ["linear_interpolate_p2"]
+retrieval_query = "helper to linearly interpolate a value between two endpoints given start and end reference points and the current reference position (two-point linear interpolation)"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_tonemapping_handler.cpp"]
+gap = "Verified 2026-06-27: linear_interpolate_p2 has 0 hits across libxcam-ocl source (cpp/h/cl) but 2 hits in libxcam-core (defined/declared in xcam_utils.h); core is excluded from the OCL snapshot so the symbol is reachable only via cross-repo find_related."

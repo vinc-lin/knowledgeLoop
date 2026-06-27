@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: the symbol rotation_axis has 0 hits across all libxcam-ocl .cpp/.h/.cl source but is defined once as a Quaternion member in libxcam-core/vec_mat.h (line 1065); libxcam-core is excluded from the OCL snapshot, so the helper is un-greppable locally and reachable only via cross-repo find_related.
+id = "xr-ocl-fisheye-rotation-axis"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_fisheye_handler.cpp, inside CLFisheyeHandler::generate_fisheye_table (the DewarpBowl branch, right after the extrinsic parameters are obtained), build a quaternion from the camera extrinsic euler angles and add an XCAM_LOG_DEBUG that prints the equivalent single rotation axis and angle for that orientation. Use the project's existing quaternion helper that converts an orientation into its axis-and-angle representation, instead of hand-rolling the acos/sqrt math yourself."
+rubric = "Full credit only if the change calls the Quaternion member rotation_axis() (declared in libxcam-core/vec_mat.h, returns VectorN<T,4> with xyz=axis and w=angle) on a quaternion built from the extrinsic euler angles inside CLFisheyeHandler::generate_fisheye_table in cl_fisheye_handler.cpp. Partial credit if it uses the helper but at a wrong/awkward site. Zero credit if it hand-rolls the axis-angle extraction (acos/sqrt of w and v) or invents a non-existent API name (e.g. toAxisAngle, axisAngle, getAxis); these indicate the cross-repo KB was not consulted since core is absent from the OCL snapshot."
+required_apis = ["rotation_axis"]
+retrieval_query = "how to extract the equivalent single rotation axis and rotation angle from a quaternion orientation using the math/vector library"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_fisheye_handler.cpp"]
+gap = "Verified 2026-06-27: the symbol rotation_axis has 0 hits across all libxcam-ocl .cpp/.h/.cl source but is defined once as a Quaternion member in libxcam-core/vec_mat.h (line 1065); libxcam-core is excluded from the OCL snapshot, so the helper is un-greppable locally and reachable only via cross-repo find_related."

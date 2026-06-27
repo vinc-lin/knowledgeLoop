@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# On 2026-06-27, grep -rIw for distance over libxcam-ocl (.cpp/.h/.cl) returned 0 hits while the same search over libxcam-core returned 4 hits, with the member defined in vec_mat.h (Vector2<T>::distance at lines 125 and VectorN at 190/482); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related.
+id = "xr-ocl-wireframe-distance"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_wire_frame_handler.cpp, add a small helper near the wire-frame coordinate handling that computes the straight-line (Euclidean) separation between two 2D points by using the project's existing vector math helper rather than hand-rolling an sqrt expression."
+rubric = "Pass iff the change calls the core Vector2<T>::distance member (declared/defined in vec_mat.h, e.g. Vector2<float>(x0,y0).distance(Vector2<float>(x1,y1))) to compute the Euclidean separation, instead of writing an inline sqrtf((dx*dx)+(dy*dy)) expression or a custom helper. Bonus: includes/uses the Vector2 type from core vec_mat.h. Fail if it reimplements the math by hand or invents a non-existent API."
+required_apis = ["distance"]
+retrieval_query = "helper in the shared vector/matrix math header that computes the Euclidean straight-line separation between two 2D points"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_wire_frame_handler.cpp"]
+gap = "On 2026-06-27, grep -rIw for distance over libxcam-ocl (.cpp/.h/.cl) returned 0 hits while the same search over libxcam-core returned 4 hits, with the member defined in vec_mat.h (Vector2<T>::distance at lines 125 and VectorN at 190/482); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related."

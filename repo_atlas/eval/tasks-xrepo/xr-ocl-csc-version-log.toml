@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# On 2026-06-27, grep -rIw for the version helper across libxcam-ocl returned 0 hits while libxcam-core returned 7 hits (declared in base/xcam_common.h:69); the symbol is reachable only via cross-repo retrieval.
+id = "xr-ocl-csc-version-log"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_csc_handler.cpp, when a CLCscImageHandler is created (in its constructor or the create_cl_csc_image_handler factory), add an XCAM_LOG_INFO line that reports the XCam library version. Use the project's existing helper for retrieving the library version number instead of hand-rolling it or hardcoding a literal."
+rubric = "PASS iff the change calls xcam_version() (declared in libxcam-core/base/xcam_common.h, returning uint32_t) to obtain the version and logs it inside cl_csc_handler.cpp at the handler-creation site (constructor or create_cl_csc_image_handler). FAIL if it hardcodes a version literal, invents a different symbol (e.g. get_version/XCam::version), or does not call xcam_version()."
+required_apis = ["xcam_version"]
+retrieval_query = "how to obtain the XCam library build version string or number from the shared core base utility headers to log it at runtime"
+prior_art_files = ["base/xcam_common.h"]
+expected_files = ["cl_csc_handler.cpp"]
+gap = "On 2026-06-27, grep -rIw for the version helper across libxcam-ocl returned 0 hits while libxcam-core returned 7 hits (declared in base/xcam_common.h:69); the symbol is reachable only via cross-repo retrieval."

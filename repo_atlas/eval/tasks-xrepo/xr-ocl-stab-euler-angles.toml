@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: euler_angles has 0 hits across libxcam-ocl (cpp/h/cl) but 8 hits in libxcam-core (defined vec_mat.h:1086); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related.
+id = "xr-ocl-stab-euler-angles"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_video_stabilizer.cpp, inside CLVideoStabilizer::analyze_motion, add an XCAM_LOG_DEBUG line that converts a device orientation quaternion into its yaw, pitch, and roll angles and emits the three values. Use the project's existing helper for converting a quaternion into Euler angles, instead of hand-rolling the atan2/asin math yourself."
+rubric = "Pass iff the change calls the core Quaternion member euler_angles() (declared in libxcam-core/vec_mat.h, returns VectorN<T,3> of yaw/pitch/roll in radians) on an orientation quaternion and logs the result, rather than re-deriving Euler angles by hand. Calling euler_angles() is the discriminating signal that cross-repo retrieval surfaced the un-greppable core API. Fail if the dev recomputes atan2/asin manually or invents a differently named helper."
+required_apis = ["euler_angles"]
+retrieval_query = "convert an orientation quaternion to yaw pitch roll angles using an existing quaternion math helper in the shared core library"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_video_stabilizer.cpp"]
+gap = "Verified 2026-06-27: euler_angles has 0 hits across libxcam-ocl (cpp/h/cl) but 8 hits in libxcam-core (defined vec_mat.h:1086); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related."

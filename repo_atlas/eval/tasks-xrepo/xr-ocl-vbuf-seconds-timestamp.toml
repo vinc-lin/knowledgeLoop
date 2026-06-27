@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: XCAM_SECONDS_2_TIMESTAMP has 0 hits across libxcam-ocl sources and 1 definition in libxcam-core base/xcam_defs.h:112, so it is un-greppable in the OCL snapshot and reachable only via cross-repo find_related.
+id = "xr-ocl-vbuf-seconds-timestamp"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_video_buffer.cpp, inside the CLVideoBuffer constructor, set the buffer's initial timestamp to a default presentation duration of 1 second. Use the project's existing helper for converting a duration in seconds into the engine's internal timestamp unit, instead of hand-rolling the multiplier."
+rubric = "PASS if the change in cl_video_buffer.cpp converts the seconds value using the macro XCAM_SECONDS_2_TIMESTAMP (from libxcam-core base/xcam_defs.h) rather than a literal *1000000; FAIL if it hand-codes the multiplier, invents a different name, or leaves seconds unconverted."
+required_apis = ["XCAM_SECONDS_2_TIMESTAMP"]
+retrieval_query = "how does the project convert a duration in seconds into its internal timestamp unit; existing seconds-to-timestamp conversion helper for video buffer timestamps"
+prior_art_files = ["base/xcam_defs.h"]
+expected_files = ["cl_video_buffer.cpp"]
+gap = "Verified 2026-06-27: XCAM_SECONDS_2_TIMESTAMP has 0 hits across libxcam-ocl sources and 1 definition in libxcam-core base/xcam_defs.h:112, so it is un-greppable in the OCL snapshot and reachable only via cross-repo find_related."

@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8, gpuimage). cge helper in gpuimage-core, 0-hit in gpuimage-consumer snapshot.
+# The consumer snapshot excludes the cge core, so the ProgramObject convenience method for sending a named float uniform (defined in common/cgeShaderFunctions.h) is not present or greppable in the consumer; the agent cannot discover the correct existing helper by searching customFilter_0.cpp or the rest of gpuimage-consumer alone and must reach the core header via cross-repo relation.
+id = "xr-gp-cf0-send-uniformf"
+kind = "dev"
+repo = "gpuimage-consumer"
+prompt = "In the gpuimage-consumer repo, edit custom/customFilter_0.cpp. In CustomFilter_0::render2Texture, after the shader program is bound and before the draw call, send one additional scalar float uniform value by name to the active shader program (for example a single intensity/strength factor). Do not introduce a raw GL uniform call or manually look up and cache a uniform location for this new value -- use the project's existing helper on the program object for sending a named float uniform to the currently bound program. Keep the change minimal and consistent with how this codebase already passes data to shaders."
+rubric = "PASS if the edit to custom/customFilter_0.cpp adds a single named float uniform send inside CustomFilter_0::render2Texture by calling the program object's sendUniformf member (e.g. m_program.sendUniformf('<name>', value)) on the bound program. FAIL if it uses a raw glUniform1f/glUniform call, adds a new manual uniformLocation lookup + cached GLint for the value, invents a differently named setter (setUniform/setFloat/etc.), edits any other file, or does not compile against the ProgramObject API. The send must occur while the program is bound (after m_program.bind()) and before glDrawArrays."
+required_apis = ["sendUniformf"]
+retrieval_query = "helper method on the shader program object to send a named scalar float uniform value to the currently bound program"
+prior_art_files = ["common/cgeShaderFunctions.h"]
+expected_files = ["custom/customFilter_0.cpp"]
+gap = "The consumer snapshot excludes the cge core, so the ProgramObject convenience method for sending a named float uniform (defined in common/cgeShaderFunctions.h) is not present or greppable in the consumer; the agent cannot discover the correct existing helper by searching customFilter_0.cpp or the rest of gpuimage-consumer alone and must reach the core header via cross-repo relation."

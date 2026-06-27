@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# The dumping helper required to satisfy the intent is declared only in libxcam-core/xcam_utils.h, which is excluded from the libxcam-ocl snapshot. It produces 0 hits in the OCL repo (cpp/h/cl), so a local grep cannot surface it; it is discoverable only by cross-repo find_related into the core shared library where it is declared and defined.
+id = "xr-ocl-handler-dump-data-buf"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_image_handler.cpp, in CLImageHandler::execute(), add a small diagnostic hook just before execute_done is called on the output buffer (after the image kernels have run successfully) that, when a debug dump is requested, writes the output buffer's raw bytes to a file on disk so engineers can inspect intermediate results. Use the project's existing helper for dumping a raw memory region (a data pointer plus a byte size) to a named file, instead of hand-rolling fopen/fwrite logic. Keep the change minimal and idiomatic to the surrounding code."
+rubric = "Pass if the inserted code calls dump_data_buf (declared in libxcam-core/xcam_utils.h) passing the output buffer raw data pointer, its size in bytes, and a target file name, placed inside CLImageHandler::execute after execute_kernels() succeeds. The solution must reuse the core helper rather than inventing a new symbol. Fail if it hand-rolls fopen/fwrite/ofstream, invents a differently-named function, or omits the call entirely."
+required_apis = ["dump_data_buf"]
+retrieval_query = "libxcam core shared utility helper that writes a raw memory buffer (a data pointer and its byte size) out to a named file on disk for diagnostic dumping of the OpenCL image handler output"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_image_handler.cpp"]
+gap = "The dumping helper required to satisfy the intent is declared only in libxcam-core/xcam_utils.h, which is excluded from the libxcam-ocl snapshot. It produces 0 hits in the OCL repo (cpp/h/cl), so a local grep cannot surface it; it is discoverable only by cross-repo find_related into the core shared library where it is declared and defined."

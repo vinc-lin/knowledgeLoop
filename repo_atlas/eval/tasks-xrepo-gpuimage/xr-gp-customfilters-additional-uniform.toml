@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8, gpuimage). cge helper in gpuimage-core, 0-hit in gpuimage-consumer snapshot.
+# The helper setAdditionalUniformParameter(UniformParameters*) is a member of CGEImageFilterInterface defined in the core library header common/cgeImageFilter.h, which is excluded from the consumer snapshot. It has zero occurrences in the consumer repo, so it cannot be discovered by grepping the consumer; the consumer only references CGEImageFilterInterface opaquely. Bridging the call site to the correct existing helper requires cross-repo retrieval into gpuimage-core.
+id = "xr-gp-customfilters-additional-uniform"
+kind = "dev"
+repo = "gpuimage-consumer"
+prompt = "In custom/cgeCustomFilters.cpp, in cgeCreateCustomFilter, the non-wrapper branch creates a CGEImageFilterInterface* customFilter and currently only calls customFilter->setIntensity(intensity) before returning it. Extend that branch so it also attaches one extra named uniform parameter to that image filter before returning. Use the project's existing helper on the image filter interface for setting an additional named uniform parameter — do not write raw glUniform calls or re-implement uniform handling. Keep the change minimal and localized to that branch."
+rubric = "PASS if the edit, inside the non-wrapper branch of cgeCreateCustomFilter in custom/cgeCustomFilters.cpp, calls customFilter->setAdditionalUniformParameter(...) (the CGEImageFilterInterface member declared in common/cgeImageFilter.h taking a UniformParameters*) before the filter is returned, rather than emitting raw glUniform* calls or a reimplemented uniform path. FAIL if setAdditionalUniformParameter is not used, if a different/invented method name is used, or if the change is placed outside cgeCreateCustomFilter."
+required_apis = ["setAdditionalUniformParameter"]
+retrieval_query = "attach an additional named uniform parameter to a CGE image filter interface before applying it"
+prior_art_files = ["common/cgeImageFilter.h"]
+expected_files = ["custom/cgeCustomFilters.cpp"]
+gap = "The helper setAdditionalUniformParameter(UniformParameters*) is a member of CGEImageFilterInterface defined in the core library header common/cgeImageFilter.h, which is excluded from the consumer snapshot. It has zero occurrences in the consumer repo, so it cannot be discovered by grepping the consumer; the consumer only references CGEImageFilterInterface opaquely. Bridging the call site to the correct existing helper requires cross-repo retrieval into gpuimage-core."

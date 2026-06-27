@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: XCAM_DOUBLE_EQUAL has 0 hits across libxcam-ocl source but 2 hits in libxcam-core (defined in base/xcam_defs.h), so it is un-greppable from the OCL snapshot and reachable only via cross-repo find_related.
+id = "xr-ocl-scaler-double-equal"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_image_scaler.cpp, update CLImageScaler::set_scaler_factor so it returns early and skips the redundant assignment when the incoming h_factor and v_factor already match the stored _h_scaler_factor and _v_scaler_factor. Use the project's existing helper for comparing two floating-point values for near-equality within a tolerance, instead of hand-rolling the comparison with a raw == or your own epsilon check."
+rubric = "Pass iff the change uses the project macro XCAM_DOUBLE_EQUAL (or XCAM_DOUBLE_EQUAL_AROUND) from base/xcam_defs.h to compare the float scaler factors in set_scaler_factor, rather than a raw ==, hand-rolled fabs(a-b)<eps, or a newly-defined local epsilon helper. Bonus: includes/relies on xcam_defs.h transitively. Fail if it invents a different comparison or guesses a non-existent helper name."
+required_apis = ["XCAM_DOUBLE_EQUAL"]
+retrieval_query = "project helper macro to compare two floating-point values for near-equality within a tolerance, used to skip redundant work when scale factors are unchanged"
+prior_art_files = ["base/xcam_defs.h"]
+expected_files = ["cl_image_scaler.cpp"]
+gap = "Verified 2026-06-27: XCAM_DOUBLE_EQUAL has 0 hits across libxcam-ocl source but 2 hits in libxcam-core (defined in base/xcam_defs.h), so it is un-greppable from the OCL snapshot and reachable only via cross-repo find_related."

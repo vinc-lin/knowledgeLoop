@@ -54,6 +54,9 @@ def build_parser() -> argparse.ArgumentParser:
                          "(use with genuine-gap tasks); grounding = API referenced anywhere in the diff")
     ea.add_argument("--timeout", type=int, default=900,
                     help="per `claude -p` run wall-clock cap in seconds (default 900)")
+    ea.add_argument("--inject-k", type=int, default=5,
+                    help="forced-inject arm: how many retrieval units to pre-paste (default 5; "
+                         "use ~20 for cross-repo so the ceiling sees what find_related returns)")
     return p
 
 
@@ -147,7 +150,7 @@ def _run_eval_arms(args) -> int:
                 for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
     retriever = OfflineRetriever(store, embedder)
     runner = ClaudeRunner(registry, args.mcp_config or "", retriever=retriever,
-                          timeout=args.timeout)
+                          timeout=args.timeout, inject_k=args.inject_k)
     oracles = {name: store_exists_fn(store, name, repo_path=registry[name]) for name in registry}
 
     def exists(sym: str) -> bool:

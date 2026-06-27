@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: XCAM_TIMESTAMP_2_SECONDS has 0 hits across libxcam-ocl (.cpp/.h/.cl) and 4 hits in libxcam-core, defined at base/xcam_defs.h:111; reachable from OCL only via cross-repo find_related since core is excluded from the OCL snapshot.
+id = "xr-ocl-demo-timestamp-seconds"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_demo_handler.cpp, inside CLDemoImageHandler::prepare_parameters, add a single XCAM_LOG_DEBUG line that reports the input buffers timestamp in whole seconds. Use the projects existing helper for converting a raw timestamp into seconds, instead of hand-rolling the conversion by dividing by a magic constant inline."
+rubric = "Pass iff the change calls the XCAM_TIMESTAMP_2_SECONDS macro (from base/xcam_defs.h) on the input buffer timestamp to produce seconds for the log message. Inlining a literal division (e.g. /1000000) or any other ad-hoc constant does NOT pass — the existing project macro must be used. Must compile-shaped: macro applied to input->get_timestamp() or equivalent."
+required_apis = ["XCAM_TIMESTAMP_2_SECONDS"]
+retrieval_query = "helper macro to convert a frame or buffer timestamp from microseconds into whole seconds for logging in libxcam"
+prior_art_files = ["base/xcam_defs.h"]
+expected_files = ["cl_demo_handler.cpp"]
+gap = "Verified 2026-06-27: XCAM_TIMESTAMP_2_SECONDS has 0 hits across libxcam-ocl (.cpp/.h/.cl) and 4 hits in libxcam-core, defined at base/xcam_defs.h:111; reachable from OCL only via cross-repo find_related since core is excluded from the OCL snapshot."

@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: grep of magnitude across libxcam-ocl source returned 0 hits while libxcam-core has 6 (defined in vec_mat.h Vector2 magnitude); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related.
+id = "xr-ocl-wireframe-magnitude"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_wire_frame_handler.cpp, extend CLWireFrameImageHandler::check_wire_frames_validity so it also rejects any wire frame whose rectangle diagonal is too large. Treat each frame's (width, height) extent as a 2D offset vector and use the project's existing 2D vector type with its built-in length helper to compute the diagonal length, instead of hand-rolling an inline sqrt expression."
+rubric = "Pass iff the change constructs a Vector2 (from vec_mat.h) from the frame width/height and calls its magnitude() method to obtain the diagonal length. Fail if it inlines sqrtf/std::hypot or hand-rolls the Euclidean norm instead of using Vector2::magnitude(). The helper magnitude is defined only in libxcam-core/vec_mat.h, which is excluded from the OCL snapshot, so locating it requires cross-repo retrieval."
+required_apis = ["magnitude"]
+retrieval_query = "compute the euclidean length of a vector"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_wire_frame_handler.cpp"]
+gap = "Verified 2026-06-27: grep of magnitude across libxcam-ocl source returned 0 hits while libxcam-core has 6 (defined in vec_mat.h Vector2 magnitude); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related."

@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: linear_interpolate_p4 has 0 hits across libxcam-ocl (cpp/h/cl) but 2 hits in libxcam-core (declared xcam_utils.h:50, defined xcam_utils.cpp:207); core is excluded from the OCL snapshot so the symbol is reachable only via cross-repo find_related.
+id = "xr-ocl-retinex-interp4"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_retinex_handler.cpp, inside CLRetinexImageKernel::prepare_arguments where the CLRetinexConfig fields are populated, compute the retinex gain at the current pixel by interpolating a value among four corner control points (top-left, top-right, bottom-left, bottom-right). Use the project's existing distance-weighted four-point interpolation helper for this instead of hand-rolling the interpolation math inline."
+rubric = "PASS only if the change calls the core helper linear_interpolate_p4 (from xcam_utils.h) with its four corner values plus the eight corner reference coordinates and the current x,y. FAIL if the agent reimplements bilinear/distance-weighted interpolation inline, invents a differently-named local helper, or uses linear_interpolate_p2. The helper is in libxcam-core (not in the OCL snapshot), so a correct solution requires cross-repo retrieval surfacing xcam_utils.h."
+required_apis = ["linear_interpolate_p4"]
+retrieval_query = "helper to interpolate a value among four corner control points by distance-weighting from their reference coordinates at a current x,y position"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_retinex_handler.cpp"]
+gap = "Verified 2026-06-27: linear_interpolate_p4 has 0 hits across libxcam-ocl (cpp/h/cl) but 2 hits in libxcam-core (declared xcam_utils.h:50, defined xcam_utils.cpp:207); core is excluded from the OCL snapshot so the symbol is reachable only via cross-repo find_related."

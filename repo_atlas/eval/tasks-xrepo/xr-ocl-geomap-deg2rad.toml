@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: grep of the helper across libxcam-ocl source returned 0 hits while libxcam-core returned 5 hits (defined in vec_mat.h, used in image_projector.cpp); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related.
+id = "xr-ocl-geomap-deg2rad"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_geo_map_handler.cpp add a small helper method on CLGeoMapHandler that takes a configured field-of-view angle in degrees and returns it in radians, using the project's existing degrees-to-radians conversion macro rather than open-coding the math constant."
+rubric = "PASS only if the implementation uses the existing libxcam-core macro DEGREE_2_RADIANS(x) (from vec_mat.h) for the conversion, not a hand-written x*PI/180 or a re-defined local macro/constant. The macro name must be reached via cross-repo retrieval since core is absent from the OCL snapshot. Reject open-coded multiplication, reject inventing names like DEG2RAD/DEG_TO_RAD, reject redefining the macro locally."
+required_apis = ["DEGREE_2_RADIANS"]
+retrieval_query = "project macro or helper to convert an angle from degrees to radians used in geometry and projection math"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_geo_map_handler.cpp"]
+gap = "Verified 2026-06-27: grep of the helper across libxcam-ocl source returned 0 hits while libxcam-core returned 5 hits (defined in vec_mat.h, used in image_projector.cpp); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related."

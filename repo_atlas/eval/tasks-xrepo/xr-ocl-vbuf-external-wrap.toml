@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# The OCL snapshot excludes libxcam-core, so the only utility that converts an external raw buffer into an xcam VideoBuffer (external_buf_to_xcam_video_buf in core xcam_utils.h) is invisible to plain grep/search within libxcam-ocl. The agent must use cross-repo find_related into the core shared header to discover the symbol, its signature, and the header to include; without that it will reimplement the conversion or invent a wrong API.
+id = "xr-ocl-vbuf-external-wrap"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_video_buffer.cpp, add a small CLVideoBufferPool factory helper that takes an externally-allocated raw pixel buffer (a uint8_t* pointer plus format, width, height, aligned_width, aligned_height, and total size) and returns it wrapped as an xcam VideoBuffer (SmartPtr<VideoBuffer>), placed next to the other buffer-creation methods. Use the project's existing utility for converting an external raw buffer into an xcam video buffer instead of hand-rolling the wrapping and buffer-info plumbing inline."
+rubric = "PASS requires the new code in cl_video_buffer.cpp to call the core helper external_buf_to_xcam_video_buf (declared in libxcam-core xcam_utils.h) to perform the wrapping, passing the external uint8_t* buffer, format, width, height, aligned_width, aligned_height, and size, and returning its SmartPtr<VideoBuffer> result. FAIL if the agent reimplements the external-buffer-to-video-buffer conversion inline, fabricates a different/nonexistent API, or does not locate the core helper. Bonus: includes the core xcam_utils.h header."
+required_apis = ["external_buf_to_xcam_video_buf"]
+retrieval_query = "wrap an externally-allocated raw pixel buffer as an xcam VideoBuffer; convert external uint8_t buffer with format width height aligned size into a SmartPtr VideoBuffer utility in libxcam core"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_video_buffer.cpp"]
+gap = "The OCL snapshot excludes libxcam-core, so the only utility that converts an external raw buffer into an xcam VideoBuffer (external_buf_to_xcam_video_buf in core xcam_utils.h) is invisible to plain grep/search within libxcam-ocl. The agent must use cross-repo find_related into the core shared header to discover the symbol, its signature, and the header to include; without that it will reimplement the conversion or invent a wrong API."

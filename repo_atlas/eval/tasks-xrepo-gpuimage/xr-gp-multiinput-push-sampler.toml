@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8, gpuimage). cge helper in gpuimage-core, 0-hit in gpuimage-consumer snapshot.
+# The helper that binds a named 2D sampler uniform to a texture unit lives only in the core library header common/cgeShaderFunctions.h, which is excluded from the consumer snapshot; it cannot be found by grepping the consumer, only by relating the consumer site to the core definition.
+id = "xr-gp-multiinput-push-sampler"
+kind = "dev"
+repo = "gpuimage-consumer"
+prompt = "In the gpuimage-consumer file custom/cgeMultiInputFilter.cpp, in CGE::CGEMultiInputFilter::render2Texture, after the existing input-texture binding loop and before the draw call, bind one additional named 2D sampler texture into the currently bound shader program so a fragment shader can read it. Treat it as a uniform named maskTexture backed by a single GLuint texture id on its own texture unit. Use the project existing helper for binding a named 2D sampler uniform to a texture unit instead of hand-writing the glActiveTexture / glBindTexture / glUniform1i sequence. Keep the addition minimal and local to that site."
+rubric = "PASS if the added code at the render2Texture site in custom/cgeMultiInputFilter.cpp binds the extra named 2D sampler by calling the project helper pushSampler2D (passing the uniform name maskTexture, a pointer to the texture id, and a texture bind unit) rather than re-implementing the raw glActiveTexture/glBindTexture/glUniform1i sequence. FAIL if it hand-rolls the GL calls, invents a different API, or omits the binding."
+required_apis = ["pushSampler2D"]
+retrieval_query = "helper to bind a named 2D sampler uniform texture into a shader program for an additional input texture in gpuimage"
+prior_art_files = ["common/cgeShaderFunctions.h"]
+expected_files = ["custom/cgeMultiInputFilter.cpp"]
+gap = "The helper that binds a named 2D sampler uniform to a texture unit lives only in the core library header common/cgeShaderFunctions.h, which is excluded from the consumer snapshot; it cannot be found by grepping the consumer, only by relating the consumer site to the core definition."

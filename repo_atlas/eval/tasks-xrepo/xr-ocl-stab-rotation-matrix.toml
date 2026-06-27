@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: grep of rotation_matrix is 0 hits across libxcam-ocl (.cpp/.h/.cl) but 4 hits in libxcam-core (defined in vec_mat.h:1103, used in image_projector.cpp); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related.
+id = "xr-ocl-stab-rotation-matrix"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_video_stabilizer.cpp, in CLVideoStabilizer::analyze_motion, add a small step that converts a device-pose orientation quaternion into a 3x3 extrinsic rotation matrix. Use the project's existing helper for converting a quaternion into a rotation matrix, instead of hand-rolling the conversion math inline."
+rubric = "Pass iff the change calls the quaternion method rotation_matrix() (from libxcam-core vec_mat.h) to obtain the 3x3 Mat3d from an orientation quaternion. Fail if it hand-rolls the quaternion-to-matrix math, invents a different name (toRotationMatrix, mat3_cast, to_matrix, asMatrix), or never sources the helper cross-repo from core."
+required_apis = ["rotation_matrix"]
+retrieval_query = "helper that converts an orientation quaternion into a 3x3 rotation extrinsic matrix in the libxcam math/vector-matrix utilities"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_video_stabilizer.cpp"]
+gap = "Verified 2026-06-27: grep of rotation_matrix is 0 hits across libxcam-ocl (.cpp/.h/.cl) but 4 hits in libxcam-core (defined in vec_mat.h:1103, used in image_projector.cpp); core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related."

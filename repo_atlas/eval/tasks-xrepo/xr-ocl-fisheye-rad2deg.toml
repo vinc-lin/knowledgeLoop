@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: grep of the helper in libxcam-ocl returned 0 hits; in libxcam-core returned 8 hits (defined in vec_mat.h line 43); reachable only via cross-repo find_related since core is excluded from the OCL snapshot.
+id = "xr-ocl-fisheye-rad2deg"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_fisheye_handler.cpp, inside CLFisheye2GPSKernel::prepare_arguments where fisheye_info.intrinsic.fov has just been converted to radians (near the XCAM_LOG_DEBUG call), extend that debug log to also print the field-of-view back in degrees. Use the project's existing helper for converting an angle from radians to degrees, instead of hand-rolling the arithmetic."
+rubric = "Pass iff the change uses the core macro RADIANS_2_DEGREE (from vec_mat.h) to convert fisheye_info.intrinsic.fov from radians to degrees in the log line. Fail if the agent hand-rolls (x*180.0/XCAM_PI or x*180/M_PI), invents a different name, or uses the inverse helper degree2radian. The point is discovering the cross-repo macro via find_related since core is absent from the OCL snapshot."
+required_apis = ["RADIANS_2_DEGREE"]
+retrieval_query = "helper macro to convert an angle value from radians to degrees in the libxcam math utilities"
+prior_art_files = ["vec_mat.h"]
+expected_files = ["cl_fisheye_handler.cpp"]
+gap = "Verified 2026-06-27: grep of the helper in libxcam-ocl returned 0 hits; in libxcam-core returned 8 hits (defined in vec_mat.h line 43); reachable only via cross-repo find_related since core is excluded from the OCL snapshot."

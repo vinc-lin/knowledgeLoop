@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# cl_fisheye_handler.cpp converts the extrinsic roll from degrees to radians without first normalizing the degree value into the canonical [0,360) range. The needed normalization helper (format_angle) lives in libxcam-core base/xcam_common.h, which is excluded from the OCL snapshot, so it is un-greppable locally and only reachable via cross-repo find_related.
+id = "xr-ocl-fisheye-format-angle"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_fisheye_handler.cpp, inside CLFisheye2GPSKernel::prepare_arguments, the camera extrinsic roll is converted from degrees to radians, but the incoming roll can be negative or 360 or more, leaving it outside the canonical [0, 360) degree window. Normalize the roll degree value into [0, 360) before the degree-to-radian conversion, and use the project's existing helper for wrapping a degree angle into the canonical [0, 360) range instead of hand-rolling it with an inline if/else or fmod."
+rubric = "PASS requires ALL of: (1) The edit is in cl_fisheye_handler.cpp inside CLFisheye2GPSKernel::prepare_arguments, at the roll extrinsic handling near the degree2radian conversion. (2) The solution calls the shared core helper format_angle (declared in libxcam-core base/xcam_common.h, signature float format_angle (float angle), normalizing to [0,360)); it must be the actual helper, not a hand-rolled inline if/else, fmod, or fmodf reimplementation. (3) format_angle is applied to the roll DEGREE value BEFORE degree2radian is applied (i.e. format_angle wraps the degree input, not the radian output). FAIL if a new local normalization function is invented, if the wrong symbol is used, or if normalization is applied after radian conversion. The agent should have discovered the symbol via cross-repo find_related since it is absent from the OCL snapshot."
+required_apis = ["format_angle"]
+retrieval_query = "wrap an angle into the canonical 0 to 360 degree range"
+prior_art_files = ["base/xcam_common.h"]
+expected_files = ["cl_fisheye_handler.cpp"]
+gap = "cl_fisheye_handler.cpp converts the extrinsic roll from degrees to radians without first normalizing the degree value into the canonical [0,360) range. The needed normalization helper (format_angle) lives in libxcam-core base/xcam_common.h, which is excluded from the OCL snapshot, so it is un-greppable locally and only reachable via cross-repo find_related."

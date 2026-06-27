@@ -40,6 +40,7 @@ PROXY_K="${PROXY_K:-10}"
 LIMIT="${LIMIT:-0}"                                        # 0 = all tasks
 SCORER="${SCORER:-grounding}"                             # grounding | grounded-use (genuine-gap)
 TIMEOUT="${TIMEOUT:-900}"                                 # per claude -p run wall-clock cap (s)
+INJECT_K="${INJECT_K:-5}"                                 # forced-inject: units pre-pasted (cross-repo: ~20)
 OUT="${OUT:-$EVAL_DIR/eval-arms-scorecard.md}"
 
 # --- preflight -------------------------------------------------------------
@@ -93,4 +94,5 @@ exec "$PY" -m repo_atlas eval-arms \
   --limit "$LIMIT" \
   --scorer "$SCORER" \
   --timeout "$TIMEOUT" \
+  --inject-k "$INJECT_K" \
   --out "$OUT"

@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: grep of xcam_print_log over libxcam-ocl sources = 0 hits; over libxcam-core = 6 hits (declared in base/xcam_common.h:83, used by macros in base/xcam_defs.h). Core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related.
+id = "xr-ocl-blender-print-log"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_blender.cpp, in create_ocl_blender() right after the CLBlender is successfully created (before the final return), emit an informational diagnostic message reporting that the OCL blender was created. Use the project's existing low-level function for writing a formatted log message instead of hand-rolling it with printf or a logging macro."
+rubric = "Pass iff the change calls the core function xcam_print_log(...) (declared in base/xcam_common.h) directly to emit the message in create_ocl_blender(). Fail if it uses printf/fprintf/std::cout, or only the XCAM_LOG_INFO/DEBUG wrapper macros, or invents a different logger name. Partial credit not given for guessed names; the exact symbol xcam_print_log must appear."
+required_apis = ["xcam_print_log"]
+retrieval_query = "project low-level function to print or emit a formatted log diagnostic message in libxcam"
+prior_art_files = ["base/xcam_common.h"]
+expected_files = ["cl_blender.cpp"]
+gap = "Verified 2026-06-27: grep of xcam_print_log over libxcam-ocl sources = 0 hits; over libxcam-core = 6 hits (declared in base/xcam_common.h:83, used by macros in base/xcam_defs.h). Core is excluded from the OCL snapshot so the helper is reachable only via cross-repo find_related."

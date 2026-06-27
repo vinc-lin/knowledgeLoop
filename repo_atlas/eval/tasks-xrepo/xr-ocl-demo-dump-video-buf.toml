@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# The buffer-to-disk debug utility (dump_video_buf) is defined only in libxcam-core (xcam_utils.h), which is excluded from the libxcam-ocl snapshot; an OCL-only agent cannot grep or read it and must resolve it through cross-repo find_related into the shared core library.
+id = "xr-ocl-demo-dump-video-buf"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In cl_demo_handler.cpp, the CLDemoImageHandler::prepare_output_buf method validates its input buffer before delegating to the base class. Add a small debug aid at the start of that method, right after the format check, that writes the incoming input video buffer out to a file when a debug flag is enabled, so we can inspect the raw RGBA frame entering the demo pipeline. Use the project's existing helper for persisting a video buffer to disk as a file rather than hand-rolling your own file I/O, and keep the snippet minimal and guarded behind the debug condition."
+rubric = "PASS requires the edit to call the core helper dump_video_buf(...) on the input SmartPtr<VideoBuffer> with a file-name argument, inside CLDemoImageHandler::prepare_output_buf in cl_demo_handler.cpp, gated behind a debug condition/flag. The signature is bool dump_video_buf (const SmartPtr<VideoBuffer> buf, const char *file_name) declared in core header xcam_utils.h. FAIL if the agent invents its own fopen/fwrite/ofstream buffer-dump instead of using dump_video_buf, dumps the wrong buffer, omits the debug guard, or edits a different file/function. The agent must have discovered the helper via cross-repo retrieval into libxcam-core (it is absent from the OCL snapshot)."
+required_apis = ["dump_video_buf"]
+retrieval_query = "dump or write a VideoBuffer to disk as a file for debugging in libxcam — shared utility to persist a raw frame buffer to a path"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_demo_handler.cpp"]
+gap = "The buffer-to-disk debug utility (dump_video_buf) is defined only in libxcam-core (xcam_utils.h), which is excluded from the libxcam-ocl snapshot; an OCL-only agent cannot grep or read it and must resolve it through cross-repo find_related into the shared core library."

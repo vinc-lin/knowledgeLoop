@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8, gpuimage). cge helper in gpuimage-core, 0-hit in gpuimage-consumer snapshot.
+# The helper that builds a rotation transform matrix is defined in the cge core math types (Mat2/Mat3/Mat4 in common/cgeMat.h), which is excluded from the gpuimage-consumer snapshot. A grep inside the consumer for the symbol returns 0 hits, so an agent confined to the consumer cannot find it textually; it is discoverable only by relating the consumer change site to the core library that the consumer links against.
+id = "xr-gp-videoutils-make-rotation"
+kind = "dev"
+repo = "gpuimage-consumer"
+prompt = "In the gpuimage-consumer repo, open custom/cgeVideoUtils.cpp and look at the offscreen video generation function cgeGenerateVideoWithFilter. It reads the source video rotation metadata via decodeHandler-getRotation() and passes that angle to the encoder, but the frames that are actually rendered through the filter path are never reoriented to match. Add a small step in the filtered-frame path that builds a rotation transform matrix from the source rotation angle so the produced frames come out correctly oriented. Use the project existing helper for building a rotation transform matrix instead of composing the matrix elements (sin/cos terms) by hand."
+rubric = "PASS if the edit to custom/cgeVideoUtils.cpp constructs the rotation matrix by calling the project helper makeRotation (e.g. Mat4::makeRotation / Mat3::makeRotation / Mat2::makeRotation) from the cge math types and includes the defining header (common/cgeMat.h, or cgeScene.h which re-exposes it). FAIL if the agent hand-rolls the rotation matrix with raw sin/cos arithmetic, pulls in an external lib like glm, or invents a non-existent API. The matrix must be derived from the source rotation angle obtained via decodeHandler-getRotation()."
+required_apis = ["makeRotation"]
+retrieval_query = "build rotation transform matrix from angle in radians, cge Mat2 Mat3 Mat4 math helper for orienting rendered video frames"
+prior_art_files = ["common/cgeMat.h"]
+expected_files = ["custom/cgeVideoUtils.cpp"]
+gap = "The helper that builds a rotation transform matrix is defined in the cge core math types (Mat2/Mat3/Mat4 in common/cgeMat.h), which is excluded from the gpuimage-consumer snapshot. A grep inside the consumer for the symbol returns 0 hits, so an agent confined to the consumer cannot find it textually; it is discoverable only by relating the consumer change site to the core library that the consumer links against."

@@ -1,0 +1,12 @@
+# CROSS-REPO genuine-gap task (lap-8). Helper in libxcam-core, 0-hit in libxcam-ocl snapshot.
+# Verified 2026-06-27: get_gauss_table has 0 hits across libxcam-ocl sources but 2 hits in libxcam-core (xcam_utils.h decl + xcam_utils.cpp def); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related.
+id = "xr-ocl-gauss-table"
+kind = "dev"
+repo = "libxcam-ocl"
+prompt = "In libxcam-ocl/cl_gauss_handler.cpp, refactor CLGaussImageKernel::set_gaussian so that instead of hand-rolling the exp() loop and the manual normalization pass, it builds the normalized 1D gaussian coefficient table for the given radius and sigma by calling the project's existing gaussian-coefficient-table helper, then fills _g_table from that result."
+rubric = "Pass iff the edit calls get_gauss_table (declared in libxcam-core xcam_utils.h) to produce the normalized gaussian coefficients in set_gaussian, replacing the manual exp() loop and/or normalization. Partial credit if it references get_gauss_table but wires it incorrectly. Fail if it invents a different/local helper name or keeps the hand-rolled computation."
+required_apis = ["get_gauss_table"]
+retrieval_query = "helper to build a normalized gaussian coefficient table from a radius and sigma in the libxcam shared utilities"
+prior_art_files = ["xcam_utils.h"]
+expected_files = ["cl_gauss_handler.cpp"]
+gap = "Verified 2026-06-27: get_gauss_table has 0 hits across libxcam-ocl sources but 2 hits in libxcam-core (xcam_utils.h decl + xcam_utils.cpp def); core is excluded from the OCL snapshot so it is reachable only via cross-repo find_related."
