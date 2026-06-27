@@ -183,3 +183,10 @@ def test_is_session_limit_ignores_normal_output():
     assert _is_session_limit("I changed the buffer rate of the encoder.") is False
     assert _is_session_limit("") is False
     assert _is_session_limit(None) is False                                # tolerates None
+
+
+def test_run_agent_raises_on_session_limit():
+    # claude prints the limit text instead of a JSON envelope -> must raise (abort), not return {}
+    r = ClaudeRunner({"g": "/x"}, "/m", timeout=10)
+    with pytest.raises(SessionLimitReached):
+        r._run_agent(["printf", "You have hit your session limit; resets 8pm"], "/tmp")

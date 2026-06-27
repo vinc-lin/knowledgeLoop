@@ -282,15 +282,16 @@ class ClaudeRunner:
         return ""
 
     def _run_agent(self, cmd: list, work: str) -> dict:
-        """Invoke `claude -p`, returning the parsed JSON envelope. A TIMEOUT is swallowed and
-        returns {} — the arm is then scored as a failure on its (partial/empty) diff, instead of
-        raising and dropping the whole task across every arm (a control timeout must not discard
-        a discriminating task)."""
+        """Invoke `claude -p`, returning the parsed JSON envelope. A TIMEOUT returns {} (an
+        ordinary per-arm failure). A SESSION-LIMIT message raises SessionLimitReached so the whole
+        eval stops cleanly instead of scoring the limit as a grounded-success failure."""
         try:
             proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True,
                                   timeout=self._timeout)
         except subprocess.TimeoutExpired:
             return {}
+        if _is_session_limit(proc.stdout) or _is_session_limit(proc.stderr):
+            raise SessionLimitReached((proc.stdout or proc.stderr or "").strip()[:200])
         return json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
 
     async def run(self, task: Task, *, condition: str) -> RunResult:
