@@ -25,6 +25,19 @@ def test_claude_runner_timeout_default_and_override():
     assert ClaudeRunner({"g": "/x"}, "/m", timeout=300)._timeout == 300
 
 
+def test_run_agent_timeout_returns_empty_not_raises():
+    # a timed-out agent run must NOT raise (which would drop the whole task across all arms);
+    # it returns {} so the arm is scored as a failure on its (partial/empty) diff.
+    r = ClaudeRunner({"g": "/x"}, "/m", timeout=1)
+    assert r._run_agent(["sleep", "5"], "/tmp") == {}
+
+
+def test_run_agent_parses_json_stdout():
+    r = ClaudeRunner({"g": "/x"}, "/m", timeout=10)
+    assert r._run_agent(["printf", '{"session_id":"abc","num_turns":3}'], "/tmp") == {
+        "session_id": "abc", "num_turns": 3}
+
+
 def test_build_cmd_treatment_steers_and_wires_mcp():
     r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
     t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")

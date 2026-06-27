@@ -263,6 +263,18 @@ class ClaudeRunner:
             return NUDGE
         return ""
 
+    def _run_agent(self, cmd: list, work: str) -> dict:
+        """Invoke `claude -p`, returning the parsed JSON envelope. A TIMEOUT is swallowed and
+        returns {} — the arm is then scored as a failure on its (partial/empty) diff, instead of
+        raising and dropping the whole task across every arm (a control timeout must not discard
+        a discriminating task)."""
+        try:
+            proc = subprocess.run(cmd, cwd=work, capture_output=True, text=True,
+                                  timeout=self._timeout)
+        except subprocess.TimeoutExpired:
+            return {}
+        return json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
+
     async def run(self, task: Task, *, condition: str) -> RunResult:
         src = self._repo_paths[task.repo]
         work = tempfile.mkdtemp(prefix=f"eval-{task.id}-{condition}-")
@@ -278,10 +290,9 @@ class ClaudeRunner:
 
             # assisted arm: gate the soft nudge on the populated snapshot (helper out-of-tree?).
             nudge = await self._adoption_nudge(task, work) if mode == "assist" else ""
-            proc = subprocess.run(self._build_cmd(task, condition, work, inject, nudge), cwd=work,
-                                  capture_output=True, text=True, timeout=self._timeout)
-            raw = json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
-            # NOTE: agent-driven `git commit` inside the run would evade this working-tree diff.
+            raw = self._run_agent(self._build_cmd(task, condition, work, inject, nudge), work)
+            # Diff is captured even on timeout (raw={}) so a timed-out arm scores as a failure on
+            # its partial diff. NOTE: agent-driven `git commit` would evade this working-tree diff.
             diff = subprocess.run(["git", "-C", work, "diff", "HEAD"],
                                   capture_output=True, text=True).stdout
         finally:
