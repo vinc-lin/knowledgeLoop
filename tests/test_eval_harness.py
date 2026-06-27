@@ -1,7 +1,7 @@
 import pytest
 from repo_atlas.eval.harness import run_eval
 from repo_atlas.eval.tasks import Task
-from repo_atlas.eval.runner import RunResult, StubRunner
+from repo_atlas.eval.runner import RunResult, StubRunner, SessionLimitReached
 from repo_atlas.eval.judge import StubJudge
 
 
@@ -73,3 +73,31 @@ async def test_run_multi_eval_per_arm_with_stubs():
     assert sc.summary["success"]["optional"] == 1.0          # referenced cgeFoo
     assert sc.summary["success"]["forced-inject"] == 1.0
     assert sc.summary["contrasts"]["adoption_tax (forced−optional)"] == 0.0
+
+
+class _LimitRunner:
+    """Raises SessionLimitReached when it reaches (limit_task, limit_arm); else a valid empty run."""
+    def __init__(self, limit_task, limit_arm):
+        self._lt, self._la = limit_task, limit_arm
+
+    async def run(self, task, *, condition):
+        if task.id == self._lt and condition == self._la:
+            raise SessionLimitReached("you've hit your session limit")
+        return RunResult(condition, diff="")           # valid run, empty diff -> scorer fails
+
+
+class _FalseJudge:
+    async def score(self, task, run):
+        return False
+
+
+@pytest.mark.asyncio
+async def test_run_multi_eval_stops_clean_on_session_limit():
+    from repo_atlas.eval.harness import run_multi_eval
+    tasks = [Task(id=f"t{i}", kind="dev", repo="r", prompt="p", rubric="x") for i in range(3)]
+    runner = _LimitRunner(limit_task="t1", limit_arm="forced-inject")   # 2nd arm of the 2nd task
+    sc = await run_multi_eval(tasks, runner, ["control", "forced-inject"], _FalseJudge(),
+                              exists_fn=lambda s: False)
+    # t0 fully completed; t1 hit the limit on its 2nd arm -> dropped; t2 never ran
+    assert set(sc.per_task.keys()) == {"t0"}
+    assert sc.summary["n"] == 1

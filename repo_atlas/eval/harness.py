@@ -51,13 +51,21 @@ async def run_arms(task, runner, arms, judge, exists_fn: Callable[[str], bool]) 
 
 
 async def run_multi_eval(tasks, runner, arms, judge, exists_fn: Callable[[str], bool]):
-    """Multi-arm agentic eval. A task whose run/judge raises is skipped (logged), so one bad
-    run doesn't waste a long eval. Returns a MultiScorecard."""
+    """Multi-arm agentic eval. An ordinary task failure is skipped (logged) so one bad run doesn't
+    waste a long eval. A SessionLimitReached STOPS the eval cleanly — the quota is exhausted, so
+    every later run would also fail; we aggregate only the tasks that completed before it and report
+    where to resume. Returns a MultiScorecard."""
     from repo_atlas.eval.aggregate import aggregate_arms
+    from repo_atlas.eval.runner import SessionLimitReached
     per_task = {}
     for t in tasks:
         try:
             per_task[t.id] = await run_arms(t, runner, arms, judge, exists_fn)
+        except SessionLimitReached as exc:
+            done = len(per_task)
+            print(f"[eval] session limit reached on task {t.id} — stopping after {done} clean "
+                  f"tasks; resume the remaining {len(tasks) - done} next window: {exc}")
+            break
         except Exception as exc:                       # noqa: BLE001 - resilience boundary
             print(f"[eval] task {t.id} failed, skipping: {type(exc).__name__}: {exc}")
     return aggregate_arms(per_task, arms)
