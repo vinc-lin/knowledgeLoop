@@ -23,6 +23,31 @@ async def test_compute_proxy_surfaced_when_required_api_in_symbol_hits():
     assert proxy == {"t1": True, "t2": False}
 
 
+class _RecordingRetriever:
+    """Records the repo passed; resolves hits by query (so query routing is observable)."""
+    def __init__(self, hits_by_query):
+        self._hits = hits_by_query
+        self.repos_seen = []
+
+    async def retrieve(self, query, repo, k, kinds=None):
+        self.repos_seen.append(repo)
+        return list(self._hits.get(query, []))[:k]
+
+
+@pytest.mark.asyncio
+async def test_compute_proxy_uses_focused_query_and_all_repos():
+    # The proxy must mirror the forced-inject fix: focused query + all-repos (repo=None),
+    # else it reports "never surfaced" for every cross-repo task.
+    t = Task(id="t1", kind="dev", repo="libxcam-ocl",
+             prompt="long verbose prompt that does NOT rank the helper",
+             rubric="x", required_apis=["slerp"], retrieval_query="interpolate orientation quaternions")
+    rec = _RecordingRetriever(hits_by_query={
+        "interpolate orientation quaternions": [{"name": "slerp", "file": "vec_mat.h", "text": ""}]})
+    proxy = await compute_proxy([t], rec, k=10)
+    assert proxy == {"t1": True}                 # surfaced via the focused query
+    assert rec.repos_seen == [None]              # queried across all repos
+
+
 def test_correlate_conditional_success_rates():
     per_task = {
         "t1": {"optional": _ts("optional", True)},     # proxy surfaced, succeeded

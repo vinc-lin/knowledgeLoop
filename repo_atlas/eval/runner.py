@@ -9,7 +9,7 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from repo_atlas.eval.tasks import Task
+from repo_atlas.eval.tasks import Task, task_query
 from repo_atlas.eval.extract import extract_refs
 
 # Treatment-only directive, PREPENDED to the user prompt. The first eval found the agent never
@@ -29,6 +29,18 @@ STEER = (
 
 INJECT_HEADER = "Relevant prior art in this codebase (reuse these instead of inventing):"
 
+# Soft, insufficiency-gated nudge for the `assisted` arm. Prepended ONLY when the adoption gate
+# judges the needed helper to be outside the local work-tree. Deliberately NOT imperative (no
+# "MUST"/"FIRST" — that is the mandatory-call STEER): it models a light-touch assist that says
+# "reach for the cross-repo tool when your own search comes up empty", and is measured against
+# `optional` (natural) and `mandatory-call` (forced).
+NUDGE = (
+    "Note: this task may depend on a helper or convention that is NOT present in your local "
+    "files — it may live in a related repository. If your own search of this codebase does not "
+    "surface one, consider calling mcp__repo-atlas__find_related to look across related repos "
+    "before implementing it yourself.\n\nTask:\n"
+)
+
 
 def format_injection(units: list, *, max_k: int = 5, max_chars: int = 400) -> str:
     """Render the top retrieval units as a prior-art block to PREPEND for the forced-inject arm.
@@ -45,14 +57,15 @@ def format_injection(units: list, *, max_k: int = 5, max_chars: int = 400) -> st
     return INJECT_HEADER + "\n" + "\n".join(rows) + "\n\n"
 
 
-# arm -> (wire_mcp, prompt_mode). prompt_mode: "bare" | "steer" | "inject".
-# control/optional/forced-inject/mandatory-call are the canonical arms; baseline/treatment are
-# retained as back-compat aliases for the legacy 2-condition harness + tests.
+# arm -> (wire_mcp, prompt_mode). prompt_mode: "bare" | "steer" | "inject" | "assist".
+# control/optional/forced-inject/mandatory-call/assisted are the canonical arms; baseline/
+# treatment are retained as back-compat aliases for the legacy 2-condition harness + tests.
 ARMS = {
     "control": (False, "bare"),
     "optional": (True, "bare"),
     "forced-inject": (False, "inject"),
     "mandatory-call": (True, "steer"),
+    "assisted": (True, "assist"),
     "baseline": (False, "bare"),
     "treatment": (True, "steer"),
 }
@@ -199,23 +212,28 @@ class ClaudeRunner:
     """
     def __init__(self, repo_paths: dict, mcp_config_path: str,
                  model: str = "claude-sonnet-4-6", steer: str = STEER,
-                 retriever=None, inject_k: int = 5):
+                 retriever=None, inject_k: int = 5, timeout: int = 900):
         self._repo_paths = repo_paths           # repo name -> source path
         self._mcp = mcp_config_path
         self._model = model
         self._steer = steer
         self._retriever = retriever             # OfflineRetriever-like; used by forced-inject
         self._inject_k = inject_k
+        self._timeout = timeout                  # per `claude -p` run wall-clock cap (seconds)
 
-    def _build_cmd(self, task: Task, condition: str, work: str, inject_text: str = "") -> list:
+    def _build_cmd(self, task: Task, condition: str, work: str, inject_text: str = "",
+                   nudge_text: str = "") -> list:
         """Construct the `claude -p` argv for an arm. control/baseline: bare prompt, no MCP.
         optional: bare prompt + MCP wired. forced-inject: prior-art prepended, NO MCP.
-        mandatory-call/treatment: STEER directive prepended + MCP wired."""
+        mandatory-call/treatment: STEER directive prepended + MCP wired. assisted: soft NUDGE
+        prepended (when gated on) + MCP wired."""
         wire_mcp, mode = ARMS[condition]
         if mode == "steer":
             prompt = self._steer + task.prompt
         elif mode == "inject":
             prompt = inject_text + task.prompt
+        elif mode == "assist":
+            prompt = nudge_text + task.prompt
         else:
             prompt = task.prompt
         cmd = ["claude", "-p", prompt, "--output-format", "json",
@@ -232,8 +250,18 @@ class ClaudeRunner:
         "" when no retriever is wired (the arm then degrades to a bare-prompt control)."""
         if self._retriever is None:
             return ""
-        units = await self._retriever.retrieve(task.prompt, task.repo, self._inject_k)
+        # repo=None -> all indexed repos (so the cross-repo helper is reachable); task_query ->
+        # the focused intent query (the verbose prompt ranks the helper out of reach).
+        units = await self._retriever.retrieve(task_query(task), None, self._inject_k)
         return format_injection(units, max_k=self._inject_k)
+
+    async def _adoption_nudge(self, task: Task, work: str) -> str:
+        """assisted arm: return the soft NUDGE iff the adoption gate judges the needed helper to
+        be outside the local work-tree (snapshot at `work`); else "" (no nudge)."""
+        from repo_atlas.eval.adoption import local_context_insufficient
+        if await local_context_insufficient(task, work, self._retriever, k=self._inject_k):
+            return NUDGE
+        return ""
 
     async def run(self, task: Task, *, condition: str) -> RunResult:
         src = self._repo_paths[task.repo]
@@ -248,8 +276,10 @@ class ClaudeRunner:
             subprocess.run(["git", "-C", work, "-c", "user.email=e@x", "-c", "user.name=e",
                             "commit", "-qm", "base"], check=True)
 
-            proc = subprocess.run(self._build_cmd(task, condition, work, inject), cwd=work,
-                                  capture_output=True, text=True, timeout=900)
+            # assisted arm: gate the soft nudge on the populated snapshot (helper out-of-tree?).
+            nudge = await self._adoption_nudge(task, work) if mode == "assist" else ""
+            proc = subprocess.run(self._build_cmd(task, condition, work, inject, nudge), cwd=work,
+                                  capture_output=True, text=True, timeout=self._timeout)
             raw = json.loads(proc.stdout) if proc.stdout.strip().startswith("{") else {}
             # NOTE: agent-driven `git commit` inside the run would evade this working-tree diff.
             diff = subprocess.run(["git", "-C", work, "diff", "HEAD"],

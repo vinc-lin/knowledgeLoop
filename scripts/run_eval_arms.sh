@@ -39,6 +39,7 @@ ARMS="${ARMS:-control,optional,forced-inject,mandatory-call}"
 PROXY_K="${PROXY_K:-10}"
 LIMIT="${LIMIT:-0}"                                        # 0 = all tasks
 SCORER="${SCORER:-grounding}"                             # grounding | grounded-use (genuine-gap)
+TIMEOUT="${TIMEOUT:-900}"                                 # per claude -p run wall-clock cap (s)
 OUT="${OUT:-$EVAL_DIR/eval-arms-scorecard.md}"
 
 # --- preflight -------------------------------------------------------------
@@ -76,7 +77,7 @@ echo "  embeddings = $REPO_ATLAS_BASE_URL  (model: $REPO_ATLAS_EMBED_MODEL)"
 echo "  tasks      = $TASKS"
 echo "  mcp-config = $MCP_CONFIG"
 echo "  arms       = $ARMS"
-echo "  proxy-k    = $PROXY_K   limit = $LIMIT (0=all)   scorer = $SCORER"
+echo "  proxy-k    = $PROXY_K   limit = $LIMIT (0=all)   scorer = $SCORER   timeout = ${TIMEOUT}s"
 echo "  out        = $OUT"
 echo "  NOTE: each task runs once PER ARM via 'claude -p' (up to 900s/run). All arms x all"
 echo "        tasks is a lot of agent runs — smoke first with ARMS=control,forced-inject LIMIT=2."
@@ -91,4 +92,5 @@ exec "$PY" -m repo_atlas eval-arms \
   --proxy-k "$PROXY_K" \
   --limit "$LIMIT" \
   --scorer "$SCORER" \
+  --timeout "$TIMEOUT" \
   --out "$OUT"

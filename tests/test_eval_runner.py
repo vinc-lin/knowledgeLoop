@@ -1,7 +1,7 @@
 import json
 
 import pytest
-from repo_atlas.eval.runner import (RunResult, StubRunner, ClaudeRunner,
+from repo_atlas.eval.runner import (RunResult, StubRunner, ClaudeRunner, NUDGE,
                                     _count_atlas_in_transcript, format_injection)
 from repo_atlas.eval.tasks import Task
 
@@ -18,6 +18,11 @@ async def test_stub_runner_returns_canned():
     base = await r.run(_task(), condition="baseline")
     treat = await r.run(_task(), condition="treatment")
     assert base.tool_calls == 9 and treat.referenced_symbols == ["cgeImageFilter"]
+
+
+def test_claude_runner_timeout_default_and_override():
+    assert ClaudeRunner({"g": "/x"}, "/m")._timeout == 900
+    assert ClaudeRunner({"g": "/x"}, "/m", timeout=300)._timeout == 300
 
 
 def test_build_cmd_treatment_steers_and_wires_mcp():
@@ -77,6 +82,18 @@ def test_build_cmd_forced_inject_prepends_text_no_mcp():
     assert "--mcp-config" not in cmd                      # knowledge injected; tools NOT wired
 
 
+def test_build_cmd_assisted_soft_nudge_wires_mcp():
+    r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
+    t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
+    cmd = r._build_cmd(t, "assisted", "/work", nudge_text=NUDGE)
+    prompt = cmd[cmd.index("-p") + 1]
+    assert prompt.startswith(NUDGE)                        # nudge prepended
+    assert "do the thing" in prompt                        # task text preserved
+    assert "MUST" not in NUDGE and "FIRST" not in NUDGE    # SOFT, not the STEER directive
+    assert "find_related" in NUDGE                         # names the tool to consider
+    assert "--mcp-config" in cmd                           # tools available (agent may choose)
+
+
 def test_build_cmd_control_is_bare_no_mcp():
     r = ClaudeRunner({"gpuimage": "/x"}, "/tmp/mcp.json")
     t = Task(id="t", kind="dev", repo="gpuimage", prompt="do the thing", rubric="r")
@@ -114,3 +131,28 @@ async def test_inject_text_empty_without_retriever():
     r = ClaudeRunner({"gpuimage": "/x"}, "/m")             # no retriever wired
     t = Task(id="t", kind="dev", repo="gpuimage", prompt="p", rubric="r")
     assert await r._inject_text(t) == ""
+
+
+class _RecordingRetriever:
+    """Captures the (query, repo) of the last retrieve() call. Returns one canned hit."""
+    def __init__(self):
+        self.last_query = None
+        self.last_repo = "UNSET"
+
+    async def retrieve(self, query, repo, k, kinds=None):
+        self.last_query, self.last_repo = query, repo
+        return [{"name": "cgeFoo", "file": "a.cpp", "text": "foo helper"}]
+
+
+@pytest.mark.asyncio
+async def test_inject_text_uses_focused_query_and_all_repos():
+    # forced-inject must retrieve cross-repo (repo=None) with the task's FOCUSED query,
+    # not the verbose prompt scoped to one repo.
+    rec = _RecordingRetriever()
+    r = ClaudeRunner({"libxcam-ocl": "/x"}, "/m", retriever=rec)
+    t = Task(id="t", kind="dev", repo="libxcam-ocl",
+             prompt="long verbose multi-sentence task description",
+             rubric="r", retrieval_query="cl image handler fps profiling")
+    await r._inject_text(t)
+    assert rec.last_query == "cl image handler fps profiling"   # focused query, not prompt
+    assert rec.last_repo is None                                # all repos, not task.repo

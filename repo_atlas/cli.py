@@ -52,6 +52,8 @@ def build_parser() -> argparse.ArgumentParser:
     ea.add_argument("--scorer", choices=["grounding", "grounded-use"], default="grounding",
                     help="grounded-use = API called on an added line in the task's target files "
                          "(use with genuine-gap tasks); grounding = API referenced anywhere in the diff")
+    ea.add_argument("--timeout", type=int, default=900,
+                    help="per `claude -p` run wall-clock cap in seconds (default 900)")
     return p
 
 
@@ -144,7 +146,8 @@ def _run_eval_arms(args) -> int:
     registry = {e.name: e.repo_path
                 for e in load_registry(os.environ.get("REPO_ATLAS_REGISTRY", "atlas.toml"))}
     retriever = OfflineRetriever(store, embedder)
-    runner = ClaudeRunner(registry, args.mcp_config or "", retriever=retriever)
+    runner = ClaudeRunner(registry, args.mcp_config or "", retriever=retriever,
+                          timeout=args.timeout)
     oracles = {name: store_exists_fn(store, name, repo_path=registry[name]) for name in registry}
 
     def exists(sym: str) -> bool:

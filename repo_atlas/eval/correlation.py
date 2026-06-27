@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from repo_atlas.eval.tasks import task_query
+
 
 async def compute_proxy(tasks, retriever, *, k: int = 10) -> dict:
     """Per-task offline proxy signal: is the task's required_api in the SYMBOL-kind retrieval
@@ -9,7 +11,8 @@ async def compute_proxy(tasks, retriever, *, k: int = 10) -> dict:
     for t in tasks:
         surfaced = False
         if t.required_apis:
-            hits = await retriever.retrieve(t.prompt, t.repo, k, kinds=["symbol"])
+            # all-repos + focused query, mirroring the forced-inject arm (cross-repo reachable).
+            hits = await retriever.retrieve(task_query(t), None, k, kinds=["symbol"])
             names = {h.get("name") for h in hits} | {h.get("qualified_name") for h in hits}
             surfaced = any(api in names or api.split("::")[-1] in names
                            for api in t.required_apis)

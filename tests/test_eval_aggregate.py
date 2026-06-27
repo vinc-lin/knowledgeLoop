@@ -81,3 +81,25 @@ def test_aggregate_arms_success_and_contrasts():
     assert contrasts["captured (optional−control)"] == 0.5       # 0.5 - 0.0
     assert contrasts["adoption_tax (forced−optional)"] == 0.5    # 1.0 - 0.5
     assert sc.summary["adoption_runs"]["optional"] == 1          # only the t2 optional success called tools
+
+
+def test_aggregate_arms_assisted_lift_and_exploration():
+    from repo_atlas.eval.aggregate import TaskScore, aggregate_arms
+    arms = ["control", "forced-inject", "assisted"]
+
+    def ts(arm, success, expl):
+        return TaskScore(task_id="t", condition=arm, success=success, hallucination_rate=0.0,
+                         reuse_recall=0.0, exploration_cost=expl)
+    per_task = {
+        "t1": {"control": ts("control", False, 3), "forced-inject": ts("forced-inject", True, 5),
+               "assisted": ts("assisted", True, 4)},
+        "t2": {"control": ts("control", False, 3), "forced-inject": ts("forced-inject", True, 7),
+               "assisted": ts("assisted", False, 6)},
+    }
+    s = aggregate_arms(per_task, arms).summary
+    assert s["success"]["assisted"] == 0.5
+    # per-arm mean exploration cost (turn-count proxy) for the over-steering check
+    assert s["exploration"]["control"] == 3.0
+    assert s["exploration"]["assisted"] == 5.0                   # (4 + 6) / 2
+    assert s["contrasts"]["assisted_lift (assisted−control)"] == 0.5   # 0.5 - 0.0
+    assert s["contrasts"]["assist_gap (forced−assisted)"] == 0.5       # 1.0 - 0.5

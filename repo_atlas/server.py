@@ -13,6 +13,22 @@ from repo_atlas import tools
 
 TOOL_NAMES = ["find_related", "prepare_change", "verify_grounding", "list_repos"]
 
+# Legibility: tell the agent WHEN to reach for the tool, not just what it does. The high-value
+# case is cross-repo — a helper/convention that lives in a related repo and is therefore absent
+# from (and un-greppable in) the files in front of you.
+APP_INSTRUCTIONS = (
+    "Cross-repo knowledge. The code you need may live in a RELATED repository that is not in "
+    "your working tree. When your own search of the local files (or your own knowledge) does not "
+    "surface an existing helper, pattern, or convention, call find_related before writing it "
+    "yourself."
+)
+FIND_RELATED_DESC = (
+    "Find related code, building blocks, usage, and conventions across ALL indexed repos "
+    "(including related repos NOT in your local working tree). Call this when local search or "
+    "your own knowledge does not surface the answer — it is the only way to reach cross-repo "
+    "helpers and prior art. Use it before writing or changing a function or fixing a bug."
+)
+
 
 def build_app() -> FastMCP:
     cfg = load_config(os.environ)
@@ -24,12 +40,9 @@ def build_app() -> FastMCP:
     except Exception:
         entries = []
 
-    app = FastMCP("repo_atlas",
-                  instructions="Cross-repo knowledge: find related code/docs across repos.")
+    app = FastMCP("repo_atlas", instructions=APP_INSTRUCTIONS)
 
-    @app.tool(name="find_related",
-              description="Find related code, building blocks, usage, and conventions across "
-                          "ALL indexed repos. Use when writing/changing a function or fixing a bug.")
+    @app.tool(name="find_related", description=FIND_RELATED_DESC)
     async def _find(query: str, repos: list = None, kinds: list = None, k: int = 20) -> dict:
         return await tools.find_related(store, embedder, query, repos=repos, kinds=kinds, k=k)
 

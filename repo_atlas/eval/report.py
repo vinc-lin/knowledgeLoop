@@ -56,11 +56,13 @@ def render_multi_scorecard(scorecard, correlations=None) -> str:
     arms = scorecard.arms
     lines = ["# repo_atlas eval — multi-arm (outcome-driven)\n",
              f"Tasks: **{s['n']}**  ·  arms: {', '.join(arms)}\n",
-             "| arm | grounded-success | adoption (runs) | surfaced |",
-             "|---|---|---|---|"]
+             "| arm | grounded-success | adoption (runs) | surfaced | turns |",
+             "|---|---|---|---|---|"]
+    expl = s.get("exploration", {})
     for a in arms:
         lines.append(f"| {a} | {_pct(s['success'][a])} | "
-                     f"{s['adoption_runs'][a]}/{s['n']} | {_pct(s['surfaced_rate'][a])} |")
+                     f"{s['adoption_runs'][a]}/{s['n']} | {_pct(s['surfaced_rate'][a])} | "
+                     f"{expl.get(a, 0.0):.1f} |")
     lines.append("\n## Arm contrasts")
     for label, val in s["contrasts"].items():
         lines.append(f"- **{label}**: {val * 100:+.0f}pp")
