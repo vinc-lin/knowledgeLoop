@@ -34,3 +34,17 @@ async def test_nudge_for_returns_text_iff_out_of_tree(tmp_path):
     assert await nudge_for("q", str(tmp_path), out) == NUDGE
     inn = StubRetriever(hits_by_query={"q": [{"name": "h", "file": "local.cpp", "text": ""}]})
     assert await nudge_for("q", str(tmp_path), inn) is None
+
+
+from repo_atlas.adoption import is_coding_intent
+
+
+def test_is_coding_intent_true_for_implementation_requests():
+    for p in ["Implement a sepia filter", "add per-handler FPS logging",
+              "fix the codec crash", "use the existing profiling helper", "refactor the blender"]:
+        assert is_coding_intent(p) is True
+
+
+def test_is_coding_intent_false_for_questions_and_blank():
+    for p in ["What does this function do?", "explain the architecture", "", "summarize the module"]:
+        assert is_coding_intent(p) is False
