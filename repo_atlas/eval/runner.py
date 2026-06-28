@@ -9,6 +9,7 @@ import tempfile
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from repo_atlas.adoption import NUDGE
 from repo_atlas.eval.tasks import Task, task_query
 from repo_atlas.eval.extract import extract_refs
 
@@ -28,18 +29,6 @@ STEER = (
 )
 
 INJECT_HEADER = "Relevant prior art in this codebase (reuse these instead of inventing):"
-
-# Soft, insufficiency-gated nudge for the `assisted` arm. Prepended ONLY when the adoption gate
-# judges the needed helper to be outside the local work-tree. Deliberately NOT imperative (no
-# "MUST"/"FIRST" — that is the mandatory-call STEER): it models a light-touch assist that says
-# "reach for the cross-repo tool when your own search comes up empty", and is measured against
-# `optional` (natural) and `mandatory-call` (forced).
-NUDGE = (
-    "Note: this task may depend on a helper or convention that is NOT present in your local "
-    "files — it may live in a related repository. If your own search of this codebase does not "
-    "surface one, consider calling mcp__repo-atlas__find_related to look across related repos "
-    "before implementing it yourself.\n\nTask:\n"
-)
 
 
 def format_injection(units: list, *, max_k: int = 5, max_chars: int = 400) -> str:
