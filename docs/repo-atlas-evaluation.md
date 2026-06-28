@@ -167,7 +167,7 @@ Every improvement followed one loop:
 | 7b | **Genuine-gap re-run** — 8 grep-verified gap tasks + `GroundedUseScorer` (target-site, anti-gaming), 4 arms × 8 | **inverts to ~100% on ALL arms** incl. no-KB control; ceiling forced−control **−12pp**, captured optional−control **0pp** | control finds the helper **itself via `grep`** (6 calls, transcript-verified) → find_related is **redundant with grep intra-repo**; repo_atlas is **untestable on single-repo tasks** — needs a cross-repo substrate |
 | 7c | **Cross-repo MVP** — libxcam split into `core`(library)+`ocl`(consumer), helper un-greppable from the task's repo, 3 tasks (1 timed out) | **first positive**: mandatory-call **100%** vs control **50%** (+50pp); the win is **airtight** on the non-guessable helper — find_related surfaced `XCAM_STATIC_FPS_CALCULATION` from the *other* repo, agent used it; control couldn't | repo_atlas's value is **real but narrow + gated**: non-obvious cross-repo helpers only (proven), null intra-repo, unlocked only by **forced adoption** (optional still 0/2) |
 | 8 | **Scaled cross-repo ceiling** — control vs forced-inject over **15 non-guessable tasks across two codebases** (libxcam 10 + gpuimage 5), quota-validated | **clean +60pp ceiling**: control **1/15 (7%)** → forced-inject **10/15 (67%)** (libxcam +50pp, gpuimage +80pp) | the cross-repo value is **real & powered** — shown the un-greppable helper the agent uses it ⅔ of the time; the no-KB baseline structurally can't reach it. Adoption arms deferred (Claude **session-limit** is the eval budget) |
-| 9 | **Adoption measured** — control/optional/**assisted** (insufficiency-gated soft nudge) on libxcam (N=9, gpuimage pending), session-limit-safe harness | control **11%** → optional **22%** → **assisted 44%** (`assisted_lift` **+33pp**); adoption 0→1→**5/9**, surfaced 0→11→**56%**. assisted ≈ the banked ceiling (50%) | **the gated nudge works** — a light-touch, insufficiency-gated nudge captures most of the cross-repo ceiling *without* the mandatory directive and (lap 8) without over-steering local tasks. First evidence adoption is cheaply solvable. The harness fix fired live (429 on task 10 → **clean stop**, N=9 valid). gpuimage + 1 task pending next window |
+| 9 | **Adoption measured** — control/optional/**assisted** (gated nudge) on the **N=15** cross-repo set (libxcam 10 + gpuimage 5), session-limit-safe harness | control **13%** → optional **40%** → **assisted 53%** (vs banked ceiling 67%); `assisted_lift` **+40pp**, `captured` **+27pp**; adoption 0 → 6/15 → **10/15** | **adoption is solvable** — the gated nudge captures ~80% of the ceiling, *and* the lap-8 legibility rewrite lifted *natural* adoption (optional) from the historical ~0 to **40%**. Next = productize the gate+nudge (+ kept descriptions) as a hook/skill. (Harness fix fired live: 429 → clean stop) |
 
 ### Offline retrieval (file-level, 15 cases, `bge-m3`)
 
@@ -323,7 +323,14 @@ adoption (0/10 unprompted) + task-completion, not symbol-retrieval rank.
   codebases**, surfacing the un-greppable cross-repo helper lifts grounded success from **7% → 67%
   (+60pp)**; the no-KB baseline structurally cannot reach it (1/15, a guessed API). This is the clean,
   scaled, quota-validated confirmation of lap 7c — the core hypothesis (cross-repo knowledge helps
-  *when surfaced*) holds. What remains open is **adoption** (will the agent fetch it unprompted).
+  *when surfaced*) holds.
+- **Adoption is solvable (lap 9).** On the same N=15, an insufficiency-gated soft nudge (`assisted`)
+  reaches **53%** — ~80% of the 67% ceiling, +40pp over control — by getting the agent to call
+  `find_related` itself (10/15), with no mandatory directive and no over-steering on local tasks.
+  Even pure legibility (`optional`, just the improved tool description) lifted *natural* adoption from
+  the historical ~0 to **40%**. So both the "does it help" and the "will it fetch it" halves now have
+  affirmative, measured answers; the remaining work is **productization** (ship the gate+nudge as a
+  hook/skill) and breadth (more codebases/models).
 - A **deterministic measurement loop** that localizes problems and tunes the system with instant
   feedback — far more reliable than the noisy agentic A/B.
 - **Two measured product improvements** (rebalance, multi-gold) with traceable causes, each built
@@ -581,7 +588,7 @@ turns **9.5 = control 9.5**, 0 nudges — so the nudge does not over-steer local
 cross-repo adoption-capture measurement (does `assisted` approach the ceiling without the `mandatory`
 tax) needs further quota windows.
 
-### Lap 9 — Adoption measured: the gated nudge works (libxcam N=9; gpuimage pending) (2026-06-28)
+### Lap 9 — Adoption measured: solvable (gated nudge + legibility), N=15 two codebases (2026-06-28)
 
 The deferred adoption question, measured. First a harness fix (spec/plan `2026-06-28-adoption-measurement-*`)
 so a Claude session-limit hit can never again masquerade as a failure: `_is_session_limit` +
@@ -591,36 +598,47 @@ cleanly and aggregates only the tasks that completed before the limit. Built via
 `990508a`.
 
 Then the measurement: `control` / `optional` / `assisted` (the insufficiency-gated soft nudge) on the
-10 non-guessable libxcam ceiling tasks, `grounded-use`, `TIMEOUT=300 INJECT_K=20`, one driver.
+**N=15** non-guessable cross-repo tasks (libxcam 10 + gpuimage 5), `grounded-use`, `TIMEOUT=300
+INJECT_K=20`, one driver — run across two quota windows (the harness fix made the resume clean).
 
-| arm | grounded-success | adoption (runs) | surfaced | turns |
-|---|---|---|---|---|
-| control  | 11% (1/9) | 0/9 | 0%  | 9.3 |
-| optional | 22% (2/9) | 1/9 | 11% | 13.0 |
-| **assisted** | **44%** (4/9) | **5/9** | **56%** | 17.8 |
+| arm | grounded-success | adoption (runs) | vs banked ceiling |
+|---|---|---|---|
+| control  | **13%** (2/15) | 0/15 | — |
+| optional | **40%** (6/15) | 6/15 | (legibility only) |
+| **assisted** | **53%** (8/15) | **10/15** | ceiling = `forced-inject` **67%** |
 
-`captured (optional−control)` = **+11pp**; **`assisted_lift (assisted−control)` = +33pp**. Against the
-banked lap-8 ceiling (libxcam `forced-inject` **50%**), `assisted` at **44%** captures most of it
-(`assist_gap` ≈ 6pp). The gate fired and the agent then *called* `find_related` on **5/9** runs (vs
-optional's 1/9 natural, control's 0/9), surfacing the gold prior art **56%** of the time.
+Per codebase: libxcam (N=10) control 10% / optional 30% / assisted 40%; gpuimage (N=5) control 20% /
+optional 60% / assisted 80%. `assisted_lift (assisted−control)` = **+40pp**; `captured (optional−control)`
+= **+27pp**; `assist_gap (ceiling−assisted)` ≈ **14pp**.
 
-**This is the answer the arc was building to: adoption is cheaply solvable.** A *light-touch,
-insufficiency-gated* nudge — not the mandatory "FIRST action MUST be find_related" directive — moves
-the agent to retrieve the un-greppable cross-repo helper and roughly **quadruples** grounded success
-over the no-KB baseline (11%→44%) and **doubles** it over passive availability (22%→44%). And it does
-so without the adoption tax: lap 8 already showed the same gate stays silent on local tasks
-(turns 9.5 = control 9.5). So the mechanism is selective — loud when the answer is out of local reach,
-silent when it isn't.
+**Adoption is solvable — two levers, both cheap.**
+1. **The gated nudge works.** `assisted` at 53% captures ~80% of the ceiling (67%) and beats control by
+   +40pp, with the agent actually *calling* `find_related` on **10/15** runs. It does this *without*
+   the mandatory "FIRST action MUST be find_related" directive and *without* the adoption tax — lap 8
+   showed the same gate stays silent on local tasks (turns 9.5 = control 9.5). The mechanism is
+   selective: loud when the answer is out of local reach, silent when it isn't.
+2. **Legibility alone helped more than priors predicted.** The `optional` arm — *no* nudge, only the
+   lap-8 rewrite of `find_related`'s description/instructions ("call when local search doesn't surface
+   the answer; essential for cross-repo") — lifted *natural* adoption from the historical **~0**
+   (lap 7 optional 0/10, lap 7c 0/2, with the old terse description) to **6/15** runs / **40%** success.
+   A cheap, passive change moved the needle that earlier soft nudges couldn't.
 
-**The harness fix validated itself live.** The run hit the quota on task 10 (`warp-create-quaternion`,
-HTTP 429, "resets 6am") and the new guard **stopped cleanly** — `"session limit reached … stopping
-after 9 clean tasks; resume the remaining 1"` — yielding a clean N=9 scorecard instead of the
-lap-8-style contamination (where 128/155 limit-hits scored as false failures).
+**The harness fix validated itself live.** The first window hit the quota on task 10
+(`warp-create-quaternion`, HTTP 429, "resets 6am") and the new guard **stopped cleanly** —
+`"session limit reached … stopping after 9 clean tasks; resume the remaining 1"` — yielding a clean
+N=9 scorecard (resumed cleanly next window) instead of the lap-8-style contamination (where 128/155
+limit-hits scored as false failures).
 
-**Calibration / pending:** N=9, libxcam only; the cross-run ceiling comparison is approximate (the
-adoption-run control 11% vs the ceiling-run control 0% reflects run-to-run variance on a stochastic
-agent). **gpuimage-5 + the 1 dropped libxcam task run next quota window (6am reset)** to complete the
-N=15 picture and confirm the second codebase. Scorecard `/home/vinc/repo-atlas-xrepo/adopt-libxcam.md`.
+**Calibration:** N=15, two codebases, one model (Sonnet 4.6); pooled by hand across per-substrate
+scorecards. The cross-run ceiling comparison is approximate (run-to-run variance on a stochastic
+agent — e.g. control 13% here vs 7% in lap 8). Adoption ≠ guaranteed grounded-use: on the 1 libxcam
+remainder task `assisted` retrieved + surfaced the helper yet didn't land the call (a residual
+use-it-correctly gap). Scorecards: `/home/vinc/repo-atlas-xrepo/adopt-libxcam{,-rem}.md`,
+`/home/vinc/repo-atlas-xrepo2/adopt-gpuimage.md`.
+
+**Decision (the arc's payoff):** adoption is **cheaply solvable**, so the next step is to **productize**
+— ship the insufficiency gate + soft nudge as a Claude Code hook/skill, and keep the improved tool
+descriptions — rather than build a heavier always-on auto-retrieve. That is a fresh brainstorm.
 **Decision (pending gpuimage confirmation):** the gated nudge works → next step is to **productize** it
 as a Claude Code hook/skill (a real-deployment mechanism), not to design a heavier auto-retrieve.
 
