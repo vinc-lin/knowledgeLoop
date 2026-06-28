@@ -226,6 +226,52 @@ $VENV/bin/python -m repo_atlas            # default subcommand = serve (stdio MC
 matches), `prepare_change(target, repo)` (nearest symbol + conventions + related),
 `list_repos()` (indexed units + freshness per repo). Tools that target one repo take a `repo` arg.
 
+### 3d. (optional) Adoption nudge hook — make the agent *reach for* cross-repo knowledge
+
+The MCP tools above are only useful if the agent calls them — and on a task that looks
+self-contained, agents reliably **don't** reach for a cross-repo tool unprompted (measured: ~0
+natural adoption). This optional **`UserPromptSubmit` hook** closes that gap: on each
+implementation-style prompt it runs an *insufficiency gate* — a `find_related` across all registered
+repos — and, **only when the most-relevant prior art lives outside the current repo**, injects a
+one-line nudge so the agent calls `find_related` itself. (In the eval this lifted grounded-success
+from ~13% to ~53%, vs a 67% "agent was handed the answer" ceiling.)
+
+It is **fail-open**: any error (no index, embeddings endpoint down, non-coding prompt) → no output,
+the prompt proceeds untouched. It **complements** the MCP server in 3c — it does not replace it (the
+nudge tells the agent to call that `find_related` tool).
+
+**Prereqs:** the repos are indexed (3b) and the embeddings endpoint is reachable (same as the MCP
+server); otherwise the hook silently no-ops.
+
+Add to the project's (or your user) `.claude/settings.json` (verified against Claude Code hooks docs,
+2026-06; `UserPromptSubmit` has no matcher — it fires on every prompt, and the command's filtering is
+internal):
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "type": "command", "command": "repo-atlas gate" }
+    ]
+  }
+}
+```
+
+The `repo-atlas gate` command must run with the same `REPO_ATLAS_*` env as 3b/3c (so it can reach the
+index + embeddings); set those in your shell profile or wrap the command in a small script that
+exports them. If your Claude Code version uses the matcher-group hook shape instead, nest it as
+`"UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "repo-atlas gate" } ] } ]`.
+
+**Test it** (no agent needed):
+
+```bash
+# cross-repo need -> prints the nudge; local-only need -> prints nothing
+printf '{"prompt":"add per-handler FPS logging using the project profiling helper","cwd":"'"$PWD"'"}' \
+  | repo-atlas gate
+# ad-hoc form (surfaces errors the hook path swallows):
+repo-atlas gate --prompt "implement X using the existing helper"
+```
+
 ---
 
 ## Applying to MANY repos (the pattern)
