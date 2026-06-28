@@ -57,6 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
     ea.add_argument("--inject-k", type=int, default=5,
                     help="forced-inject arm: how many retrieval units to pre-paste (default 5; "
                          "use ~20 for cross-repo so the ceiling sees what find_related returns)")
+    ga = sub.add_parser("gate",
+                        help="UserPromptSubmit hook: print a cross-repo nudge iff the prompt's need "
+                             "is out of the local work-tree (fail-open)")
+    ga.add_argument("--prompt", help="prompt text (testing); default reads the hook JSON on stdin")
+    ga.add_argument("--k", type=int, default=5, help="gate retrieval depth (default 5)")
     return p
 
 
@@ -201,6 +206,41 @@ def _run_eval_offline(args) -> int:
     return 0
 
 
+def _gate_retriever():
+    """Build the production retriever from config (separate fn so tests can monkeypatch it)."""
+    from repo_atlas.config import load_config
+    from repo_atlas.store import Store
+    from repo_atlas.embed import GatewayEmbedder
+    from repo_atlas.eval.offline.retriever import OfflineRetriever
+    cfg = load_config(os.environ)
+    return OfflineRetriever(Store(cfg.db_path),
+                            GatewayEmbedder(cfg.base_url, cfg.api_key, cfg.embed_model))
+
+
+def _run_gate(args) -> int:
+    """Print a cross-repo nudge to stdout iff the gate fires. FAIL-OPEN: any error -> no output,
+    exit 0 (a prompt-path hook must never disrupt the session)."""
+    import sys
+    try:
+        import asyncio
+        import json
+        from repo_atlas.adoption import is_coding_intent, nudge_for
+        prompt, work_dir = args.prompt, os.getcwd()
+        if prompt is None:
+            raw = sys.stdin.read()
+            data = json.loads(raw) if raw.strip().startswith("{") else {}
+            prompt = data.get("prompt", "")
+            work_dir = data.get("cwd") or work_dir
+        if not prompt or not is_coding_intent(prompt):
+            return 0
+        nudge = asyncio.run(nudge_for(prompt, work_dir, _gate_retriever(), k=args.k))
+        if nudge:
+            sys.stdout.write(nudge)
+    except Exception:
+        pass
+    return 0
+
+
 def main(argv: Optional[list] = None) -> int:
     args = build_parser().parse_args(argv)
     if args.cmd == "index":
@@ -211,6 +251,8 @@ def main(argv: Optional[list] = None) -> int:
         return _run_eval_offline(args)
     if args.cmd == "eval-arms":
         return _run_eval_arms(args)
+    if args.cmd == "gate":
+        return _run_gate(args)
     from repo_atlas.server import main as serve_main
     serve_main()
     return 0
