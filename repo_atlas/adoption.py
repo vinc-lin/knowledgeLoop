@@ -18,7 +18,7 @@ NUDGE = (
 
 _CODING_INTENT = re.compile(
     r"\b(implement|add|fix|use the existing|wire up|refactor|create|write|hook up|"
-    r"call the|integrate|support)\b", re.IGNORECASE)
+    r"call the|integrate)\b", re.IGNORECASE)
 
 
 def is_coding_intent(prompt: str) -> bool:
